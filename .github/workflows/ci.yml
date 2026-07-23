@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master, dev]
+  workflow_dispatch:
+
+# 同一分支的新推送会取消旧跑，省 CI 额度
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------- 1) 构建 + 单元测试（跨平台矩阵）----------
+  # 同时是“我写的未编译代码”的真相验证：在 ubuntu/windows 上真正编译+链接+跑 ctest。
+  # Windows 上还会真正走 DPAPI 路径（credentialStore 单测的 round-trip）。
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            host: linux
+          - os: windows-latest
+            host: windows
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt ${{ matrix.host }}
+        uses: jurplel/install-qt-action@v4
+        id: qt
+        with:
+          version: '6.8.1'
+          host: ${{ matrix.host }}
+          cache: true
+
+      - name: Install Ninja (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+        shell: bash
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build
+          -G "${{ runner.os == 'Windows' && 'Visual Studio 17 2022' || 'Ninja' }}"
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTS=ON
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DCMAKE_PREFIX_PATH="${{ steps.qt.outputs.qt_dir }}"
+        shell: bash
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+        shell: bash
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+        shell: bash
+
+  # ---------- 2) clang-tidy 静态分析（温和门禁）----------
+  static-analysis:
+    name: clang-tidy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        id: qt
+        with:
+          version: '6.8.1'
+          host: linux
+          cache: true
+
+      - name: Install clang-tools
+        run: sudo apt-get update && sudo apt-get install -y clang clang-tools ninja-build
+        shell: bash
+
+      - name: Configure (export compile_commands)
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTS=ON
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DCMAKE_PREFIX_PATH="${{ steps.qt.outputs.qt_dir }}"
+        shell: bash
+
+      - name: clang-tidy
+        run: |
+          run-clang-tidy -p build \
+            -header-filter='(src|tests)/.*\.h$' \
+            src/.*\.cpp tests/.*\.cpp 2>&1 | tee clang-tidy.log
+          echo "clang-tidy 完成（见上方日志；warning 不阻断 CI，按报告第5节逐步收敛）"
+        shell: bash
+
+  # ---------- 3) clazy（Qt 专用静态分析，best-effort）----------
+  # continue-on-error：clazy 与特定 clang 版本强耦合，工具链版本错位时不应阻断团队。
+  clazy:
+    name: clazy (best-effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        id: qt
+        with:
+          version: '6.8.1'
+          host: linux
+          cache: true
+
+      - name: Install clazy + clang
+        run: sudo apt-get update && sudo apt-get install -y clazy clang ninja-build
+        shell: bash
+
+      - name: Configure with clazy
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTS=ON
+          -DCMAKE_CXX_COMPILER=clazy
+          -DCMAKE_C_COMPILER=clang
+          -DCMAKE_PREFIX_PATH="${{ steps.qt.outputs.qt_dir }}"
+        shell: bash
+
+      - name: Build (clazy instruments)
+        run: cmake --build build --parallel
+        shell: bash

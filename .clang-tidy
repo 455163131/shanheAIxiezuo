@@ -1,0 +1,32 @@
+---
+# 山河AI写作 · 静态分析配置（clang-tidy）
+# 运行方式（需先生成 compile_commands.json）：
+#   cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+#   run-clang-tidy -p build -header-filter='(src|tests)/.*\.h$' src/.*\.cpp tests/.*\.cpp
+# 也可经 CI（.github/workflows/ci.yml）自动跑。
+#
+# 设计：以“温和门禁”为目标——WarningsAsErrors 留空，CI 只输出发现、不阻断合并；
+# 团队按报告第 5 节硬约束逐步收敛。后续若要“PR 必过”，把对应检查名移入 WarningsAsErrors。
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  readability-*,
+  cppcoreguidelines-*,
+  qt-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-vararg,
+  -readability-function-cognitive-complexity,
+  -bugprone-easily-swappable-parameters,
+  -modernize-raw-string-literal,
+  -cppcoreguidelines-owning-memory,
+  -bugprone-narrowing-conversions
+WarningsAsErrors: ''
+HeaderFilterRegex: '(src|tests)/.*\.(h|hpp)$'
+FormatStyle: file
