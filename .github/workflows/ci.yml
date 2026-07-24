@@ -27,7 +27,11 @@ jobs:
         include:
           - os: ubuntu-latest
             host: linux
-          - os: windows-latest
+          # 钉到 windows-2022 而非 windows-latest：2025 起的 windows-latest 默认镜像
+          # 不再预装 Visual Studio 2022，本配置强依赖 `Visual Studio 17 2022` 生成器，
+          # 跑在 2025 上会直接 "could not find any instance of Visual Studio"。需要更新
+          # 到新 runner 时同步改用 `Ninja` 生成器 + MSVC toolchain。
+          - os: windows-2022
             host: windows
     runs-on: ${{ matrix.os }}
     steps:
@@ -93,10 +97,13 @@ jobs:
         shell: bash
 
       - name: clang-tidy
+        # 只扫 src/。tests/test_shanhe.cpp 是「Q_OBJECT in .cpp + #include "test_shanhe.moc"」
+        # 模式，单独分析时 .moc 还没生成，clang-tidy 会以 "file not found" 失败；
+        # 测试代码自身的正确性由 ctest 在 build-and-test 矩阵里真跑兜底。
         run: |
           run-clang-tidy -p build \
-            -header-filter='(src|tests)/.*\.h$' \
-            src/.*\.cpp tests/.*\.cpp 2>&1 | tee clang-tidy.log
+            -header-filter='src/.*\.h$' \
+            src/.*\.cpp 2>&1 | tee clang-tidy.log
           echo "clang-tidy 完成（见上方日志；warning 不阻断 CI，按报告第5节逐步收敛）"
         shell: bash
 

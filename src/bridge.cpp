@@ -255,6 +255,11 @@ void ShanHeBridge::generate(bool reduceAI, const QString &persona,
 void ShanHeBridge::stopGeneration()
 {
     m_cancelled = true;
+    // 必须把依赖注入的替身也通知到：测试里 bridge 经 setLlmClient() 把 m_override
+    // 设成 FakeLlmClient，不通知它就不会把 fake.aborted 置位，进而让 bridge_cancelSuppressesDone
+    // 单测翻车。顺序无关（每个客户端 abort() 都幂等 / 线程安全）。
+    if (m_override && m_override != m_httpClient && m_override != m_mockClient)
+        m_override->abort();
     if (m_httpClient) m_httpClient->abort();
     if (m_mockClient) m_mockClient->abort();
 }
