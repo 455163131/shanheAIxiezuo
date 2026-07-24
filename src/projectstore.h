@@ -29,10 +29,12 @@
  * 向后兼容：旧版单一 meta.json（含内联 chapters 数组、无 schemaVersion）在
  * 首次 loadBook 时自动迁移为新目录布局，已存书籍不丢。
  *
- * 不继承 Q_OBJECT / 无信号槽：纯粹的文件读写工具，降低构建耦合。
+ * 继承 QObject（仅用于对象树归属 / 内存管理：bridge 以 new ProjectStore(this) 托管），
+ * 但无信号槽：仍是纯粹的文件读写工具，不引入额外构建耦合。
  */
-class ProjectStore
+class ProjectStore : public QObject
 {
+    Q_OBJECT
 public:
     explicit ProjectStore(QObject *parent = nullptr);
 
