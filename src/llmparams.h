@@ -40,4 +40,19 @@ static constexpr int MAX_TOKENS_HARD_CAP = 65536;
 // Ported from project1 ai.js:190.
 bool isReasonerModel(const QString &modelName);
 
+// Builds sampling fields from UI indices.
+// creativityIndex 0..5 -> CREATIVITY[i]; thinkingIndex 0..4 -> THINKING[i].
+// thinkingBudget is capped at 25% of maxTokens and THINKING_HARD_CAP, with a
+// floor of 256. When thinkingAuto is true, reasoningEffort is left unset
+// (the provider decides automatically).
+SamplingFields buildSampling(int creativityIndex, bool thinkingAuto,
+                             int thinkingIndex, int maxTokens);
+
+// Reverse-derives a max-token budget from a target word count.
+// Formula: ceil(words * slack) + 320 + thinkingBudget, clamped to
+// [512, MAX_TOKENS_HARD_CAP]. When userMaxTokens > 0, the result is
+// further capped by it (but never below 512).
+int tokensForWordBudget(int targetWords, int thinkingBudget,
+                        int userMaxTokens, double slack = 1.35);
+
 } // namespace LlmParams

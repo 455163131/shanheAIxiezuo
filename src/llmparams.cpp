@@ -1,6 +1,8 @@
 #include "llmparams.h"
 
 #include <QRegularExpression>
+#include <algorithm>
+#include <cmath>
 
 namespace LlmParams {
 
@@ -15,6 +17,41 @@ bool isReasonerModel(const QString &modelName)
         QRegularExpression::CaseInsensitiveOption
     );
     return re.match(modelName).hasMatch();
+}
+
+SamplingFields buildSampling(int creativityIndex, bool thinkingAuto,
+                             int thinkingIndex, int maxTokens)
+{
+    SamplingFields s;
+    int ci = std::clamp(creativityIndex, 0, 5);
+    s.temperature = CREATIVITY[ci];
+
+    int ti = std::clamp(thinkingIndex, 0, 4);
+    int presetBudget = THINKING[ti].budget;
+    int maxTokens25 = static_cast<int>(std::floor(maxTokens * 0.25));
+    int budget = std::min({presetBudget, maxTokens25, THINKING_HARD_CAP});
+    s.thinkingBudget = std::max(256, budget);
+
+    if (!thinkingAuto) {
+        s.reasoningEffort = QString::fromLatin1(THINKING[ti].effort);
+    }
+
+    return s;
+}
+
+int tokensForWordBudget(int targetWords, int thinkingBudget,
+                        int userMaxTokens, double slack)
+{
+    int base = static_cast<int>(std::ceil(targetWords * slack));
+    int total = base + 320 + thinkingBudget;
+    total = std::max(512, std::min(total, MAX_TOKENS_HARD_CAP));
+
+    if (userMaxTokens > 0) {
+        total = std::min(total, userMaxTokens);
+        total = std::max(512, total);
+    }
+
+    return total;
 }
 
 } // namespace LlmParams
