@@ -68,6 +68,8 @@ Item {
         if (idx === chapList.currentIndex) return
         if (chapList.currentIndex >= 0 && chapList.currentIndex < chapters.count)
             chapters.setProperty(chapList.currentIndex, "content", editor.text)
+        saveTimer.stop()
+        persist()
         chapList.currentIndex = idx
         const c = chapters.get(idx)
         editor.text = c ? (c.content || "") : ""
