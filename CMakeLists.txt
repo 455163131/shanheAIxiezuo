@@ -56,6 +56,10 @@ qt_add_qml_module(ShanHeWriter
         qml/screens/CompareView.qml
         qml/screens/SettingsSheet.qml
         qml/controls/Theme.qml
+        qml/controls/Icon.qml
+        qml/controls/Card.qml
+        qml/controls/Badge.qml
+        qml/controls/TextFieldEx.qml
         qml/controls/RippleButton.qml
         qml/controls/ProgressRing.qml
         qml/controls/GenreCard.qml
