@@ -160,10 +160,12 @@ Item {
                     delegate: Rectangle {
                         id: card
                         width: 224; height: 150; radius: Theme.radiusMd
-                        color: Theme.surface
+                        color: cardMa.containsMouse ? Theme.surfaceHover : Theme.surface
                         border.color: cardMa.containsMouse ? modelData.hue : Theme.line
-                        border.width: 1
+                        border.width: cardMa.containsMouse ? 2 : 1
+                        Behavior on color { ColorAnimation { duration: Theme.durFast } }
                         Behavior on border.color { ColorAnimation { duration: Theme.durNormal } }
+                        Behavior on border.width { NumberAnimation { duration: Theme.durFast } }
                         // 入场
                         opacity: 0
                         Component.onCompleted: appear.start()
@@ -217,9 +219,6 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: ShanHe.openBook(modelData.id)
                         }
-                        // hover 轻上浮
-                        y: cardMa.containsMouse ? -4 : 0
-                        Behavior on y { NumberAnimation { duration: Theme.durNormal; easing.type: Easing.OutCubic } }
                     }
                 }
 

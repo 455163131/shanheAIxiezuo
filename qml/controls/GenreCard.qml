@@ -34,10 +34,12 @@ Item {
         id: face
         anchors.fill: parent
         radius: Theme.radiusMd
-        color: Theme.surface
+        color: ma.containsMouse ? Theme.surfaceHover : Theme.surface
         border.color: ma.containsMouse ? root.glow : Theme.line
-        border.width: 1
+        border.width: ma.containsMouse ? 2 : 1
+        Behavior on color { ColorAnimation { duration: Theme.durFast } }
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
+        Behavior on border.width { NumberAnimation { duration: Theme.durFast } }
 
         Rectangle {
             width: 3; height: parent.height - 16; radius: 1.5
@@ -70,6 +72,4 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onClicked: root.cardClicked(genre)
     }
-    y: ma.containsMouse ? -3 : 0
-    Behavior on y { NumberAnimation { duration: Theme.durNormal; easing.type: Easing.OutCubic } }
 }
