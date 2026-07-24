@@ -462,7 +462,11 @@ Popup {
                     Rectangle {
                         Layout.fillWidth: true; radius: Theme.radiusSm; color: Theme.surface2
                         implicitHeight: 40
-                        RowLayout { anchors { fill: parent; leftMargin: Theme.sp3; rightMargin: Theme.sp3 }; spacing: Theme.sp2
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: Theme.sp3
+                            anchors.rightMargin: Theme.sp3
+                            spacing: Theme.sp2
                             Icon { name: "sparkles"; color: Theme.primaryHi; size: 15 }
                             Label { text: "据你的访谈答案起草，可逐栏修改"; color: Theme.body; font.family: Theme.fontFamily; font.pixelSize: Theme.tSm; Layout.fillWidth: true }
                         }
@@ -491,7 +495,11 @@ Popup {
                     Rectangle {
                         Layout.fillWidth: true; radius: Theme.radiusSm; color: Theme.surface2
                         implicitHeight: 56
-                        RowLayout { anchors { fill: parent; leftMargin: Theme.sp3; rightMargin: Theme.sp3 }; spacing: Theme.sp2
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: Theme.sp3
+                            anchors.rightMargin: Theme.sp3
+                            spacing: Theme.sp2
                             Icon { name: "layers"; color: Theme.primaryHi; size: 16 }
                             Label {
                                 text: "大纲由 AI 据你的方向/题材/钩子起草。请通读并按需修改——大纲定稿后进入创作台，可逐章展开、按需写正文，而不是一上来就生成第一章。"
