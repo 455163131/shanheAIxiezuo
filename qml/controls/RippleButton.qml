@@ -11,7 +11,6 @@ FocusScope {
     property color face: Theme.surface2
     property color ink: Theme.ink
     property int fontSize: Theme.tMd
-    property bool enabled: true
     property bool ghost: false
     signal clicked()
 

@@ -98,7 +98,7 @@ QtObject {
     property int radiusXl: 22
     property int radiusPill: 999
 
-    // ---------- 阴影 / 层级（layer.shadow 参数，组件内引用） ----------
+    // ---------- 阴影 token（组件内用半透明圆角矩形模拟，Qt 原生 layer 无 shadow 属性） ----------
     property real shSmR: 6;   property real shSmY: 1;  property real shSmO: 0.30
     property real shMdR: 18;  property real shMdY: 6;  property real shMdO: 0.38
     property real shLgR: 40;  property real shLgY: 18; property real shLgO: 0.46

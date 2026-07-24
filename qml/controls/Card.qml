@@ -10,17 +10,26 @@ Item {
     property bool elevated: false
     default property alias content: inner.data
 
+    // 阴影层：垫在卡片背后的半透明圆角矩形，纯原生模拟（Qt 原生 layer 无 shadow 属性）
+    Rectangle {
+        anchors.fill: parent
+        anchors.topMargin: root.elevated ? -Theme.shMdY : 0
+        anchors.bottomMargin: root.elevated ? -Theme.shMdY : 0
+        anchors.leftMargin: root.elevated ? -Theme.shMdY : 0
+        anchors.rightMargin: root.elevated ? -Theme.shMdY : 0
+        radius: root.radius + (root.elevated ? Theme.shMdY : 0)
+        color: "#000000"
+        opacity: root.elevated ? Theme.shMdO : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
+    }
+
+    // 卡片主体
     Rectangle {
         anchors.fill: parent
         radius: root.radius
         color: root.color
         border.color: root.bordered ? Theme.line : "transparent"
         border.width: 1
-        layer.enabled: root.elevated
-        layer.shadow.color: "#000000"
-        layer.shadow.radius: root.elevated ? Theme.shMdR : 0
-        layer.shadow.offset.y: root.elevated ? Theme.shMdY : 0
-        layer.shadow.opacity: root.elevated ? Theme.shMdO : 0
     }
     Item { id: inner; anchors.fill: parent }
 }

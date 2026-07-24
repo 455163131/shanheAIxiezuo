@@ -12,16 +12,26 @@ Pane {
     anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
     y: parent ? parent.height - 64 : 0
 
-    background: Rectangle {
-        color: Theme.surface2
-        radius: Theme.radiusMd
-        border.color: Theme.primary
-        border.width: 1
-        layer.enabled: true
-        layer.shadow.color: "#000000"
-        layer.shadow.radius: Theme.shMdR
-        layer.shadow.offset.y: Theme.shMdY
-        layer.shadow.opacity: Theme.shMdO
+    background: Item {
+        anchors.fill: parent
+        // 阴影层：垫在 Toast 背后的半透明圆角矩形，纯原生模拟（Qt 原生 layer 无 shadow 属性）
+        Rectangle {
+            anchors.fill: parent
+            anchors.topMargin: -Theme.shMdY
+            anchors.bottomMargin: -Theme.shMdY
+            anchors.leftMargin: -Theme.shMdY
+            anchors.rightMargin: -Theme.shMdY
+            radius: Theme.radiusMd + Theme.shMdY
+            color: "#000000"
+            opacity: Theme.shMdO
+        }
+        Rectangle {
+            anchors.fill: parent
+            color: Theme.surface2
+            radius: Theme.radiusMd
+            border.color: Theme.primary
+            border.width: 1
+        }
     }
     Label {
         id: tl
