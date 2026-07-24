@@ -21,7 +21,7 @@ void TestTextUtils::countWords()
     QCOMPARE(TextUtils::countWords(QStringLiteral("hello world")), 10);
     QCOMPARE(TextUtils::countWords(QStringLiteral("你好世界")), 4);
     QCOMPARE(TextUtils::countWords(QStringLiteral("  你好  世界  ")), 4);
-    QCOMPARE(TextUtils::countWords(QStringLiteral("第一段。\n第二段。")), 6);
+    QCOMPARE(TextUtils::countWords(QStringLiteral("第一段。\n第二段。")), 8);
 }
 
 void TestTextUtils::trimToWordLimit()

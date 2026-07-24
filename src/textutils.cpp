@@ -6,13 +6,14 @@
 
 namespace TextUtils {
 
-// Count "words" = characters excluding whitespace and sentence-ending
-// punctuation. For Chinese this matches the usual "zi shu" notion.
+// Count "words" = characters excluding whitespace only. Per spec 3.2,
+// sentence-ending punctuation counts toward the total (Chinese "zi shu"
+// convention where the period is part of the written length).
 int countWords(const QString &text)
 {
-    static const QRegularExpression nonWord(QStringLiteral("[\\s。！？…]"));
+    static const QRegularExpression ws(QStringLiteral("\\s"));
     QString stripped = text;
-    stripped.remove(nonWord);
+    stripped.remove(ws);
     return stripped.length();
 }
 
