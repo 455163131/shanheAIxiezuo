@@ -56,3 +56,17 @@ target_link_libraries(test_leakguard PRIVATE
     Qt6::Test
 )
 add_test(NAME test_leakguard COMMAND test_leakguard)
+
+# ---- LlmParams constants + reasoner model detection tests (Task 8) ----
+qt_add_executable(test_llmparams
+    test_llmparams.cpp
+    ../src/llmparams.cpp
+)
+target_include_directories(test_llmparams PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+target_link_libraries(test_llmparams PRIVATE
+    Qt6::Core
+    Qt6::Test
+)
+add_test(NAME test_llmparams COMMAND test_llmparams)

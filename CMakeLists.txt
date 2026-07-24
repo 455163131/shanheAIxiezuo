@@ -34,6 +34,8 @@ qt_add_executable(ShanHeWriter
     src/textutils.cpp
     src/leakguard.h
     src/leakguard.cpp
+    src/llmparams.h
+    src/llmparams.cpp
 )
 
 # ---- 流派数据（QML/C++ 共用，编译进资源）----
