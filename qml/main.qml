@@ -38,11 +38,11 @@ ApplicationWindow {
         else if (tab === "settings") { settings.open(); return }
 
         if (comp) {
-            // replace 平级切换，保留转场动效
+            // replace 平级切换，保留转场动效（默认就是 Transition）
             if (stack.currentItem) {
-                stack.replace(comp, StackView.Transition)
+                stack.replace(comp)
             } else {
-                stack.push(comp, StackView.Immediate)
+                stack.push(comp)
             }
         }
     }
