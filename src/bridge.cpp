@@ -42,19 +42,7 @@ QString encodeApiKey(const QString &plain) {
     return QString::fromLatin1(obfuscateKey(plain));
 }
 
-// 读回明文：识别 "dpapi:" 前缀走 DPAPI，否则按旧混淆格式（兼容早期安装）解析
-QString decodeApiKey(const QString &stored) {
-    if (stored.startsWith(QStringLiteral("dpapi:"))) {
-        const QByteArray blob = QByteArray::fromBase64(stored.mid(6).toUtf8());
-        QString plain;
-        if (WindowsCredentialStore::unprotect(blob, plain))
-            return plain;
-        return QString();  // 解密失败（如凭据库不可用）不返回乱码
-    }
-    if (stored.isEmpty())
-        return QString();
-    return deobfuscateKey(stored.toUtf8());
-}
+
 }
 
 ShanHeBridge::ShanHeBridge(QObject *parent)
@@ -87,7 +75,7 @@ void ShanHeBridge::loadConfig()
 {
     QSettings s(QStringLiteral("ShanHe"), QStringLiteral("ShanHeWriter"));
     m_apiBase     = s.value(QStringLiteral("api/base")).toString();
-    m_apiKey      = decodeApiKey(s.value(QStringLiteral("api/key")).toString());
+    m_apiKey      = decodeApiKey().value_or(QString());
     m_model       = s.value(QStringLiteral("api/model")).toString();
     m_temperature = s.value(QStringLiteral("api/temperature"), 0.8).toDouble();
     m_backend     = s.value(QStringLiteral("api/backend"),
@@ -121,6 +109,52 @@ void ShanHeBridge::saveConfig(const QString &base, const QString &key,
     Q_EMIT configChanged();
 }
 
+// ---------------- API Key 解码 ----------------
+// Bug-3 修复：返回 std::optional<QString> 区分「未配置」与「解密失败」。
+// - 未配置（注册表无 api/key 或为空）-> std::nullopt（不 emit error）
+// - 解密失败（DPAPI 密文损坏 / 用户切换 / crypt32 不可用）-> std::nullopt + emit error
+// - 成功 -> 返回明文
+// 调用方拿到 nullopt 后可结合 error 信号判断是配置缺失还是密文损坏，
+// 不再像旧版那样把解密失败误报为「未配置」。
+std::optional<QString> ShanHeBridge::decodeApiKey() const
+{
+    QSettings s(QStringLiteral("ShanHe"), QStringLiteral("ShanHeWriter"));
+    const QString stored = s.value(QStringLiteral("api/key")).toString();
+    if (stored.isEmpty())
+        return std::nullopt;
+
+    // 优先 DPAPI 路径：stored 形如 "dpapi:" + base64(blob)
+    if (stored.startsWith(QStringLiteral("dpapi:"))) {
+        const QByteArray blob = QByteArray::fromBase64(stored.mid(6).toUtf8());
+        if (blob.isEmpty()) {
+            Q_EMIT const_cast<ShanHeBridge*>(this)->error(
+                QStringLiteral("API Key 解密失败：密文格式损坏，请重新配置"));
+            return std::nullopt;
+        }
+        QString plain;
+        if (!WindowsCredentialStore::unprotect(blob, plain)) {
+            Q_EMIT const_cast<ShanHeBridge*>(this)->error(
+                QStringLiteral("API Key 解密失败：DPAPI 解密返回错误，"
+                               "可能是用户切换或密文损坏，请重新输入 API Key"));
+            return std::nullopt;
+        }
+        return plain;
+    }
+
+    // 旧版混淆格式（兼容早期安装）：XOR+Base64，无解密失败概念，直接反混淆
+    return deobfuscateKey(stored.toUtf8());
+}
+
+void ShanHeBridge::injectCorruptedApiKeyForTest()
+{
+    // 写入带 "dpapi:" 前缀的损坏密文：base64 解码后是普通字符串，
+    // 不是合法 DPAPI blob，unprotect 必然失败 -> 触发 decodeApiKey 的解密失败路径
+    QSettings s(QStringLiteral("ShanHe"), QStringLiteral("ShanHeWriter"));
+    s.setValue(QStringLiteral("api/key"),
+               QStringLiteral("dpapi:") +
+               QString::fromLatin1(QByteArray("not-a-valid-dpapi-blob").toBase64()));
+    s.sync();
+}
 // ---------------- 流派数据 ----------------
 QVariantList ShanHeBridge::genres() const
 {

@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QColor>
+#include <optional>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
@@ -88,6 +89,16 @@ public:
     /// 依赖注入入口：测试或外部装配时注入 ILlmClient 替身（bridge 不拥有其生命周期）
     void setLlmClient(ILlmClient *client);
 
+    /// 解码持久化的 API Key。
+    /// - 未配置（注册表无 api/key）-> std::nullopt
+    /// - 解密失败（DPAPI 密文损坏 / 用户切换）-> std::nullopt 并 emit error（含「解密失败」）
+    /// - 成功 -> 返回明文
+    /// 与「未配置」可区分：调用方拿到 nullopt 后可结合 error 信号判断是配置缺失还是密文损坏。
+    std::optional<QString> decodeApiKey() const;
+
+    /// [仅测试] 把一个损坏的「dpapi:」前缀密文写入注册表，用于触发解密失败路径。
+    void injectCorruptedApiKeyForTest();
+
 signals:
     void genresChanged();
     void configChanged();
@@ -97,6 +108,9 @@ signals:
     void generationDone(QString fullText);
     void error(QString msg);
     void testResult(bool ok, QString msg);
+
+    /// TLS/HTTPS 自检未通过（Task 3 预留，本任务不实装）
+    void tlsMissing();
 
     /// 书架变化（新建 / 删除）
     void booksChanged();

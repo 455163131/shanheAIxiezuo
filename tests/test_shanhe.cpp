@@ -2,6 +2,7 @@
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QFile>
+#include <QSettings>
 
 #include "sseparser.h"
 #include "book.h"
@@ -23,6 +24,7 @@ private slots:
     void bridge_cancelSuppressesDone();
     void projectStore_roundTrip();
     void credentialStore_behaves();
+    void bridge_decodeApiKeyDistinguishesFailure();
 };
 
 void ShanHeTests::sseParser_singleLine()
@@ -224,6 +226,39 @@ void ShanHeTests::credentialStore_behaves()
         QVERIFY(!WindowsCredentialStore::protect(QStringLiteral("x"), blob));
         QVERIFY(!WindowsCredentialStore::unprotect(blob, out));
     }
+}
+
+void ShanHeTests::bridge_decodeApiKeyDistinguishesFailure()
+{
+    // 清理可能残留的 api/key，确保情况 1（未配置）从干净状态开始
+    {
+        QSettings s(QStringLiteral("ShanHe"), QStringLiteral("ShanHeWriter"));
+        s.remove(QStringLiteral("api/key"));
+        s.sync();
+    }
+
+    ShanHeBridge bridge;
+    // 情况 1：未配置 -> std::nullopt
+    auto result1 = bridge.decodeApiKey();
+    QVERIFY(!result1.has_value());
+
+    // 情况 2：配置了有效 key -> 有值
+    bridge.saveConfig(QStringLiteral("https://api.example.com/v1"),
+                      QStringLiteral("sk-valid-key"),
+                      QStringLiteral("gpt-4o"), 0.8,
+                      QStringLiteral("api"));
+    auto result2 = bridge.decodeApiKey();
+    QVERIFY(result2.has_value());
+    QCOMPARE(result2.value(), QStringLiteral("sk-valid-key"));
+
+    // 情况 3：解密失败 -> std::nullopt + emit error 信号
+    QSignalSpy spy(&bridge, &ShanHeBridge::error);
+    bridge.injectCorruptedApiKeyForTest();
+    auto result3 = bridge.decodeApiKey();
+    QVERIFY(!result3.has_value());
+    QCOMPARE(spy.count(), 1);
+    QVERIFY(spy.takeFirst().at(0).toString().contains(
+        QStringLiteral("解密失败"), Qt::CaseInsensitive));
 }
 
 QTEST_GUILESS_MAIN(ShanHeTests)
