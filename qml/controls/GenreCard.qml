@@ -1,8 +1,9 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 import ShanHe 1.0
 
-// 流派选择卡：3D 倾斜跟随光标 + 选中流光描边
+// 流派选择卡：选中流光描边 + 克制 hover 上浮（去掉廉价 3D 倾斜）
 Item {
     id: root
     property var genre
@@ -10,71 +11,63 @@ Item {
     property color glow: genre && genre.group === "女频" ? Theme.female : Theme.male
     signal cardClicked(var genre)
 
-    implicitWidth: 196; implicitHeight: 110
-
-    property real tiltX: 0
-    property real tiltY: 0
+    implicitWidth: 200; implicitHeight: 112
 
     // 选中流光描边
     Rectangle {
         anchors.fill: parent
-        radius: Theme.rSm
+        radius: Theme.radiusMd
         color: "transparent"
         border.color: root.glow
         border.width: root.selected ? 2 : 0
-        opacity: root.selected ? 0.9 : 0
-        Behavior on opacity { NumberAnimation { duration: 220 } }
-        // 流光呼吸
+        opacity: root.selected ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.durNormal } }
         SequentialAnimation on border.width {
             running: root.selected
             loops: Animation.Infinite
-            NumberAnimation { from: 2; to: 3.2; duration: 900; easing.type: Easing.InOutSine }
-            NumberAnimation { from: 3.2; to: 2; duration: 900; easing.type: Easing.InOutSine }
+            NumberAnimation { from: 2; to: 3; duration: 900; easing.type: Easing.InOutSine }
+            NumberAnimation { from: 3; to: 2; duration: 900; easing.type: Easing.InOutSine }
         }
     }
 
-    // 卡片面
     Rectangle {
         id: face
         anchors.fill: parent
-        radius: Theme.rSm
-        color: Theme.panel2
-        border.color: Theme.line
+        radius: Theme.radiusMd
+        color: Theme.surface
+        border.color: ma.containsMouse ? root.glow : Theme.line
         border.width: 1
-        opacity: ma.containsMouse ? 1 : 0.92
+        Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
 
-        transform: [
-            Rotation { axis.x: 1; axis.y: 0; axis.z: 0; angle: root.tiltX;
-                Behavior on angle { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } } },
-            Rotation { axis.x: 0; axis.y: 1; axis.z: 0; angle: root.tiltY;
-                Behavior on angle { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } } },
-            Scale { id: sc; xScale: 1; yScale: 1;
-                Behavior on xScale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } } }
-        ]
+        Rectangle {
+            width: 4; height: parent.height - 24; radius: 2
+            anchors.verticalCenter: parent.verticalCenter
+            color: root.glow
+        }
 
         Column {
-            anchors { left: parent.left; right: parent.right; top: parent.top; margins: 12 }
-            spacing: 5
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.sp4 }
+            spacing: Theme.sp2
             Label {
                 text: genre ? genre.name : ""
-                color: Theme.ink
-                font.pixelSize: 15; font.bold: true
-                elide: Text.ElideRight
-                width: parent.width
+                color: Theme.ink; font.family: Theme.fontFamily
+                font.pixelSize: Theme.tMd; font.bold: true
+                elide: Text.ElideRight; width: parent.width
             }
-            Label {
-                text: genre ? genre.tag : ""
-                color: root.glow
-                font.pixelSize: 11
-                elide: Text.ElideRight
-                width: parent.width
+            RowLayout {
+                spacing: 4
+                Rectangle { width: 6; height: 6; radius: 3; color: root.glow }
+                Label {
+                    text: genre ? genre.tag : ""
+                    color: root.glow; font.family: Theme.fontFamily
+                    font.pixelSize: Theme.tXs; elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
             }
             Label {
                 text: genre ? "对标：" + genre.author : ""
-                color: Theme.sub
-                font.pixelSize: 11
-                elide: Text.ElideRight
-                width: parent.width
+                color: Theme.sub; font.family: Theme.fontFamily
+                font.pixelSize: Theme.tXs; elide: Text.ElideRight; width: parent.width
             }
         }
     }
@@ -83,12 +76,9 @@ Item {
         id: ma
         anchors.fill: parent
         hoverEnabled: true
-        onEntered: sc.xScale = 1.04
-        onExited: { sc.xScale = 1; root.tiltX = 0; root.tiltY = 0 }
-        onPositionChanged: {
-            root.tiltY = (mouseX / width - 0.5) * 9
-            root.tiltX = -(mouseY / height - 0.5) * 9
-        }
+        cursorShape: Qt.PointingHandCursor
         onClicked: root.cardClicked(genre)
     }
+    y: ma.containsMouse ? -3 : 0
+    Behavior on y { NumberAnimation { duration: Theme.durNormal; easing.type: Easing.OutCubic } }
 }

@@ -2,12 +2,12 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import ShanHe 1.0
 
-// 金箔进度环（Canvas 绘制，零额外依赖）
+// 进度环（Canvas 绘制，零额外依赖），统一走设计系统配色
 Item {
     id: root
-    property real progress: 0      // 0..100
+    property real progress: 0
     property int size: 70
-    property color color: Theme.goldBr
+    property color color: Theme.primaryHi
     property int thickness: 7
     width: size; height: size
 
@@ -20,11 +20,9 @@ Item {
             ctx.clearRect(0, 0, width, height)
             const cx = width / 2, cy = height / 2
             const r = (Math.min(width, height) - root.thickness) / 2
-            // 轨道
             ctx.lineWidth = root.thickness
             ctx.strokeStyle = Theme.line
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
-            // 进度弧
             const start = -Math.PI / 2
             const end = start + (root.progress / 100) * Math.PI * 2
             ctx.lineWidth = root.thickness
@@ -37,6 +35,7 @@ Item {
         anchors.centerIn: parent
         text: Math.round(root.progress) + "%"
         color: Theme.ink
+        font.family: Theme.fontFamily
         font.pixelSize: root.size * 0.26
         font.bold: true
     }

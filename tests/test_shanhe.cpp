@@ -1,6 +1,7 @@
 #include <QTest>
 #include <QSignalSpy>
 #include <QStandardPaths>
+#include <QFile>
 
 #include "sseparser.h"
 #include "book.h"
@@ -149,6 +150,10 @@ void ShanHeTests::projectStore_roundTrip()
     b[QStringLiteral("author")] = QStringLiteral("某人");
     b[QStringLiteral("hue")] = QStringLiteral("#fff");
     b[QStringLiteral("worldView")] = QStringLiteral("世界观内容");
+    // 开新书引导访谈新增字段（增量持久化，向后兼容）
+    b[QStringLiteral("direction")] = QStringLiteral("男频");
+    b[QStringLiteral("tone")]      = QStringLiteral("热血燃、悬疑烧脑");
+    b[QStringLiteral("hook")]      = QStringLiteral("开局获得神秘系统");
     QVariantList ch;
     QVariantMap c1;
     c1[QStringLiteral("title")] = QStringLiteral("第1章");
@@ -159,9 +164,21 @@ void ShanHeTests::projectStore_roundTrip()
     const QString id = store.createBook(b);
     QVERIFY(!id.isEmpty());
 
+    // 验证 10.2 契约目录布局已生成（worldView→bible.md、characters→characters.json、
+    // outline→outline.json、第 N 章→chapters/chNN.txt）
+    QVERIFY(QFile::exists(store.bookDir(id)));
+    QVERIFY(QFile::exists(store.biblePath(id)));
+    QVERIFY(QFile::exists(store.charactersPath(id)));
+    QVERIFY(QFile::exists(store.outlinePath(id)));
+    QVERIFY(QFile::exists(store.chapterPath(id, 1)));
+
     QVariantMap loaded = store.loadBook(id);
     QCOMPARE(loaded[QStringLiteral("title")].toString(), QStringLiteral("测试书"));
     QCOMPARE(loaded[QStringLiteral("worldView")].toString(), QStringLiteral("世界观内容"));
+    // 验证引导访谈答案随书持久化（关闭重开仍可用）
+    QCOMPARE(loaded[QStringLiteral("direction")].toString(), QStringLiteral("男频"));
+    QCOMPARE(loaded[QStringLiteral("tone")].toString(), QStringLiteral("热血燃、悬疑烧脑"));
+    QCOMPARE(loaded[QStringLiteral("hook")].toString(), QStringLiteral("开局获得神秘系统"));
     QVariantList chLoaded = loaded[QStringLiteral("chapters")].toList();
     QCOMPARE(chLoaded.size(), 1);
     QCOMPARE(chLoaded.first().toMap()[QStringLiteral("content")].toString(), QStringLiteral("正文A"));
