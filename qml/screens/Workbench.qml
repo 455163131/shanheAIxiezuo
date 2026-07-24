@@ -151,6 +151,7 @@ Item {
             contentWidth: availableWidth
             background: Rectangle { color: "transparent" }
             Flow {
+                wrapMode: Flow.Wrap
                 width: parent.width
                 spacing: Theme.sp4
                 Repeater {

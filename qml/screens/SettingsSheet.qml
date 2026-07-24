@@ -81,6 +81,7 @@ Popup {
             spacing: Theme.sp2
             Label { text: "快速预设（点击自动填入地址与示例模型）"; color: Theme.sub; font.family: Theme.fontFamily; font.pixelSize: Theme.tSm }
             Flow {
+                wrapMode: Flow.Wrap
                 Layout.fillWidth: true
                 spacing: Theme.sp2
                 Repeater {

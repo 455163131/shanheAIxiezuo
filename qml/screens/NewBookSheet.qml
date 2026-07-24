@@ -244,6 +244,7 @@ Popup {
                                 onTextChanged: sheet.bookTitle = text
                             }
                             Flow {
+                                wrapMode: Flow.Wrap
                                 Layout.fillWidth: true
                                 spacing: Theme.sp2
                                 Repeater {
@@ -327,6 +328,7 @@ Popup {
                                 Label { text: sheet.selectedGenre ? ("已选：" + sheet.selectedGenre.name) : "未选择"; color: Theme.primaryHi; font.family: Theme.fontFamily; font.pixelSize: Theme.tSm }
                             }
                             Flow {
+                                wrapMode: Flow.Wrap
                                 Layout.fillWidth: true; spacing: Theme.sp3
                                 Repeater {
                                     model: sheet.filtered
@@ -349,6 +351,7 @@ Popup {
                                 Label { text: "③ 你想要的风格基调是？（可多选）"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                             }
                             Flow {
+                                wrapMode: Flow.Wrap
                                 Layout.fillWidth: true; spacing: Theme.sp2
                                 Repeater {
                                     model: sheet.toneOptions
