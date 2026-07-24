@@ -64,6 +64,9 @@ int main(int argc, char *argv[])
     ShanHeBridge bridge;
     engine.rootContext()->setContextProperty(QStringLiteral("ShanHe"), &bridge);
 
+    // Bug-4：启动时检测 TLS 插件可用性，缺失则 emit tlsMissing 让 QML 设置页标红
+    bridge.checkTlsOnStartup();
+
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
                      &app, [](const QUrl &url) {
         const QString err = QString::fromUtf8("QML 组件加载失败: ") + url.toString()

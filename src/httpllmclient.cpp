@@ -6,6 +6,11 @@ HttpLlmClient::HttpLlmClient(QObject *parent)
 {
 }
 
+bool HttpLlmClient::checkTlsAvailable()
+{
+    return QSslSocket::supportsSsl();
+}
+
 void HttpLlmClient::configure(const QString &apiBase, const QString &apiKey)
 {
     m_apiBase = apiBase.trimmed();

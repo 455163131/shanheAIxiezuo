@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QUrl>
+#include <QSslSocket>
 
 /**
  * 真实 LLM 客户端：封装 OpenAI 兼容 /chat/completions 的流式（SSE）与一次性请求。
@@ -23,6 +24,9 @@ class HttpLlmClient : public QObject, public ILlmClient
 public:
     explicit HttpLlmClient(QObject *parent = nullptr);
 
+    /// 启动时检测 TLS 插件是否可用（缺失则 HTTPS 请求会静默失败）。
+    static bool checkTlsAvailable();
+
     /// 注入连接配置（由 bridge 在 loadConfig / saveConfig 时调用）。
     void configure(const QString &apiBase, const QString &apiKey);
 
@@ -35,6 +39,9 @@ public:
 
     void abort() override;
     bool isStreaming() const override;
+
+signals:
+    void tlsMissing();
 
 private:
     QString normalizedChatUrl() const;

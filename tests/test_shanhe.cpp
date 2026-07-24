@@ -3,10 +3,12 @@
 #include <QStandardPaths>
 #include <QFile>
 #include <QSettings>
+#include <QSslSocket>
 
 #include "sseparser.h"
 #include "book.h"
 #include "bridge.h"
+#include "httpllmclient.h"
 #include "projectstore.h"
 #include "personas.h"
 #include "windowscredentialstore.h"
@@ -25,6 +27,7 @@ private slots:
     void projectStore_roundTrip();
     void credentialStore_behaves();
     void bridge_decodeApiKeyDistinguishesFailure();
+    void httpLlmClient_tlsCheck();
 };
 
 void ShanHeTests::sseParser_singleLine()
@@ -259,6 +262,24 @@ void ShanHeTests::bridge_decodeApiKeyDistinguishesFailure()
     QCOMPARE(spy.count(), 1);
     QVERIFY(spy.takeFirst().at(0).toString().contains(
         QStringLiteral("解密失败"), Qt::CaseInsensitive));
+}
+
+void ShanHeTests::httpLlmClient_tlsCheck()
+{
+    // Bug-4：启动时检测 TLS 插件可用性，缺失时 emit tlsMissing 让 QML 设置页标红。
+    // 构造函数不自动调用 checkTlsOnStartup，由 main.cpp 显式触发，避免构造期 emit
+    // 让 QSignalSpy 错过信号。
+    const bool supports = HttpLlmClient::checkTlsAvailable();
+    QCOMPARE(supports, QSslSocket::supportsSsl());
+
+    ShanHeBridge bridge;
+    QSignalSpy spy(&bridge, &ShanHeBridge::tlsMissing);
+    bridge.checkTlsOnStartup();
+    if (supports) {
+        QCOMPARE(spy.count(), 0);
+    } else {
+        QCOMPARE(spy.count(), 1);
+    }
 }
 
 QTEST_GUILESS_MAIN(ShanHeTests)

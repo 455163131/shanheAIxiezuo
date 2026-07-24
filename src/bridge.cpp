@@ -70,6 +70,13 @@ ShanHeBridge::ShanHeBridge(QObject *parent)
     loadConfig();
 }
 
+void ShanHeBridge::checkTlsOnStartup()
+{
+    if (!HttpLlmClient::checkTlsAvailable()) {
+        Q_EMIT tlsMissing();
+    }
+}
+
 // ---------------- 配置持久化 ----------------
 void ShanHeBridge::loadConfig()
 {

@@ -89,6 +89,9 @@ public:
     /// 依赖注入入口：测试或外部装配时注入 ILlmClient 替身（bridge 不拥有其生命周期）
     void setLlmClient(ILlmClient *client);
 
+    /// 启动时检测 TLS 插件可用性（缺失则 emit tlsMissing 让 QML 设置页标红）
+    void checkTlsOnStartup();
+
     /// 解码持久化的 API Key。
     /// - 未配置（注册表无 api/key）-> std::nullopt
     /// - 解密失败（DPAPI 密文损坏 / 用户切换）-> std::nullopt 并 emit error（含「解密失败」）
