@@ -20,15 +20,10 @@ void HttpLlmClient::configure(const QString &apiBase, const QString &apiKey)
 QString HttpLlmClient::normalizedChatUrl() const
 {
     QString base = m_apiBase;
-    while (base.endsWith(QLatin1Char('/')))
-        base.chop(1);
-    // 用户可填 https://api.openai.com/v1 或已含 /chat/completions
-    if (base.endsWith(QStringLiteral("/chat/completions")))
-        return base;
-    if (base.endsWith(QStringLiteral("/v1")))
-        return base + QStringLiteral("/chat/completions");
-    // 兜底：直接拼 /v1/chat/completions
-    return base + QStringLiteral("/v1/chat/completions");
+    while (base.endsWith(QLatin1Char('/'))) base.chop(1);
+    const QString suffix = QStringLiteral("/chat/completions");
+    if (base.endsWith(suffix, Qt::CaseInsensitive)) return base;
+    return base + suffix;
 }
 
 void HttpLlmClient::streamChat(const QJsonObject &payload,

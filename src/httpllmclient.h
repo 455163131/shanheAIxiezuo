@@ -29,6 +29,8 @@ public:
 
     /// 注入连接配置（由 bridge 在 loadConfig / saveConfig 时调用）。
     void configure(const QString &apiBase, const QString &apiKey);
+    /// [test-only] expose private normalizedChatUrl() for 7.7 regression test.
+    QString normalizedChatUrlForTest() const { return normalizedChatUrl(); }
 
     void streamChat(const QJsonObject &payload,
                     std::function<void(const QString &)> onChunk,

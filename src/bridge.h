@@ -133,6 +133,7 @@ private:
     // 生成状态（由桥接层累积，供进度 / 完成信号使用）
     QString m_full;
     bool m_cancelled = false;
+    int m_currentWordCountMax = 0;  // current chapter word-count cap (0 = unknown -> progress stays 0)
 
     // LLM 客户端（依赖注入）：默认由 bridge 持有真实 / 演示实现；
     // 测试可经 setLlmClient() 覆盖为替身。

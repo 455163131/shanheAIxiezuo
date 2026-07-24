@@ -2,6 +2,7 @@
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QFile>
+#include <QDir>
 #include <QSettings>
 #include <QSslSocket>
 
@@ -29,6 +30,7 @@ private slots:
     void credentialStore_behaves();
     void bridge_decodeApiKeyDistinguishesFailure();
     void httpLlmClient_tlsCheck();
+    void httpLlmClient_urlNormalization();
     void mockLlmClient_abortsImmediately();
 };
 
@@ -149,6 +151,8 @@ void ShanHeTests::projectStore_roundTrip()
     // 让 AppDataLocation 指向临时目录，避免污染真实用户数据
     QStandardPaths::setTestModeEnabled(true);
     ProjectStore store;
+    // Test isolation: remove leftover books from previous runs so books.size()==1 holds.
+    QDir(store.rootPath()).removeRecursively();
 
     QVariantMap b;
     b[QStringLiteral("title")] = QStringLiteral("测试书");
@@ -282,6 +286,28 @@ void ShanHeTests::httpLlmClient_tlsCheck()
     } else {
         QCOMPARE(spy.count(), 1);
     }
+}
+
+void ShanHeTests::httpLlmClient_urlNormalization()
+{
+    // 7.7: URL normalization regression guard.
+    HttpLlmClient client;
+
+    client.configure("https://api.example.com/v1/", "sk-test");
+    QCOMPARE(client.normalizedChatUrlForTest(),
+             QStringLiteral("https://api.example.com/v1/chat/completions"));
+
+    client.configure("https://api.example.com/v1", "sk-test");
+    QCOMPARE(client.normalizedChatUrlForTest(),
+             QStringLiteral("https://api.example.com/v1/chat/completions"));
+
+    client.configure("https://api.example.com/v1/chat/completions", "sk-test");
+    QCOMPARE(client.normalizedChatUrlForTest(),
+             QStringLiteral("https://api.example.com/v1/chat/completions"));
+
+    client.configure("https://api.example.com", "sk-test");
+    QCOMPARE(client.normalizedChatUrlForTest(),
+             QStringLiteral("https://api.example.com/chat/completions"));
 }
 
 void ShanHeTests::mockLlmClient_abortsImmediately()

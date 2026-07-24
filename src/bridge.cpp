@@ -277,7 +277,10 @@ void ShanHeBridge::generate(bool reduceAI, const QString &persona,
             if (delta.isEmpty()) return;
             m_full += delta;
             Q_EMIT generationChunk(delta);
-            const int pct = qMin(96, 5 + m_full.size() / 12);
+            const int wordMax = m_currentWordCountMax;
+            // Bug-5: progress based on actual chars vs word-count cap (1 CN char ~= 2 chars).
+            // Capped at 99% (unfinished generation must not reach 100%); 0 when cap unknown.
+            const int pct = wordMax > 0 ? qMin(99, m_full.length() * 100 / (wordMax * 2)) : 0;
             Q_EMIT generationProgress(pct, QStringLiteral("生成中"));
         },
         [this](bool ok, const QString &err) {
