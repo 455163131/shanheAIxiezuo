@@ -228,10 +228,11 @@ Popup {
             ScrollView {
                 clip: true
                 background: Rectangle { color: "transparent" }
-                Column {
-                    width: parent.width
+                ColumnLayout {
+                    Layout.fillWidth: true
                     spacing: Theme.sp4
 
+                    // 书名卡
                     Card {
                         Layout.fillWidth: true
                         ColumnLayout {
@@ -467,8 +468,8 @@ Popup {
             ScrollView {
                 clip: true
                 background: Rectangle { color: "transparent" }
-                Column {
-                    width: parent.width
+                ColumnLayout {
+                    Layout.fillWidth: true
                     spacing: Theme.sp4
                     Rectangle {
                         Layout.fillWidth: true; radius: Theme.radiusSm; color: Theme.surface2
@@ -500,8 +501,8 @@ Popup {
             ScrollView {
                 clip: true
                 background: Rectangle { color: "transparent" }
-                Column {
-                    width: parent.width
+                ColumnLayout {
+                    Layout.fillWidth: true
                     spacing: Theme.sp4
                     Rectangle {
                         Layout.fillWidth: true; radius: Theme.radiusSm; color: Theme.surface2
@@ -548,8 +549,8 @@ Popup {
             ScrollView {
                 clip: true
                 background: Rectangle { color: "transparent" }
-                Column {
-                    width: parent.width
+                ColumnLayout {
+                    Layout.fillWidth: true
                     spacing: Theme.sp3
                     RowLayout { spacing: Theme.sp2
                         Icon { name: "check"; color: Theme.success; size: 16 }
