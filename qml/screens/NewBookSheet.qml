@@ -329,21 +329,21 @@ Popup {
                                 Item { Layout.fillWidth: true }
                                 Label { text: sheet.selectedGenre ? ("已选：" + sheet.selectedGenre.name) : "未选择"; color: Theme.primaryHi; font.family: Theme.fontFamily; font.pixelSize: Theme.tSm }
                             }
-                            GridLayout {
-                                columns: 2
-                                Layout.fillWidth: true
-                                rowSpacing: Theme.sp3
-                                columnSpacing: Theme.sp3
-                                Repeater {
-                                    model: sheet.filtered
-                                    delegate: GenreCard {
-                                        Layout.fillWidth: true
-                                        genre: modelData
-                                        selected: sheet.selectedGenre && sheet.selectedGenre.id === modelData.id
-                                        onCardClicked: function (g) { sheet.selectedGenre = g }
-                                    }
+                        GridLayout {
+                            columns: 3
+                            Layout.fillWidth: true
+                            rowSpacing: Theme.sp2
+                            columnSpacing: Theme.sp2
+                            Repeater {
+                                model: sheet.filtered
+                                delegate: GenreCard {
+                                    Layout.fillWidth: true
+                                    genre: modelData
+                                    selected: sheet.selectedGenre && sheet.selectedGenre.id === modelData.id
+                                    onCardClicked: function (g) { sheet.selectedGenre = g }
                                 }
                             }
+                        }
                         }
                     }
 

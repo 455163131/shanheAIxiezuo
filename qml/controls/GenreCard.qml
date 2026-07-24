@@ -11,7 +11,7 @@ Item {
     property color glow: genre && genre.group === "女频" ? Theme.female : Theme.male
     signal cardClicked(var genre)
 
-    implicitWidth: 200; implicitHeight: 112
+    implicitWidth: 160; implicitHeight: 92
 
     // 选中流光描边
     Rectangle {
@@ -40,29 +40,20 @@ Item {
         Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
 
         Rectangle {
-            width: 4; height: parent.height - 24; radius: 2
+            width: 3; height: parent.height - 16; radius: 1.5
             anchors.verticalCenter: parent.verticalCenter
             color: root.glow
         }
 
         Column {
-            anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.sp4 }
-            spacing: Theme.sp2
+            anchors { left: parent.left; right: parent.right; top: parent.top; margins: Theme.sp3 }
+            spacing: Theme.sp1
             Label {
                 text: genre ? genre.name : ""
                 color: Theme.ink; font.family: Theme.fontFamily
-                font.pixelSize: Theme.tMd; font.bold: true
+                font.pixelSize: Theme.tLg; font.bold: true
                 elide: Text.ElideRight; width: parent.width
-            }
-            RowLayout {
-                spacing: 4
-                Rectangle { width: 6; height: 6; radius: 3; color: root.glow }
-                Label {
-                    text: genre ? genre.tag : ""
-                    color: root.glow; font.family: Theme.fontFamily
-                    font.pixelSize: Theme.tXs; elide: Text.ElideRight
-                    Layout.fillWidth: true
-                }
+                wrapMode: Text.WordWrap; maximumLineCount: 1
             }
             Label {
                 text: genre ? "对标：" + genre.author : ""
