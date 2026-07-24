@@ -32,6 +32,8 @@ qt_add_executable(ShanHeWriter
     src/windowscredentialstore.cpp
     src/textutils.h
     src/textutils.cpp
+    src/leakguard.h
+    src/leakguard.cpp
 )
 
 # ---- 流派数据（QML/C++ 共用，编译进资源）----

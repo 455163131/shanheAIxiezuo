@@ -42,3 +42,17 @@ target_link_libraries(test_textutils PRIVATE
     Qt6::Test
 )
 add_test(NAME test_textutils COMMAND test_textutils)
+
+# ---- LeakGuard three-tier prompt leak detection tests (Task 7) ----
+qt_add_executable(test_leakguard
+    test_leakguard.cpp
+    ../src/leakguard.cpp
+)
+target_include_directories(test_leakguard PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+target_link_libraries(test_leakguard PRIVATE
+    Qt6::Core
+    Qt6::Test
+)
+add_test(NAME test_leakguard COMMAND test_leakguard)
