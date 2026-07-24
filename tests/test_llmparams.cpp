@@ -13,6 +13,10 @@ private slots:
     void tokensForWordBudget_default();
     void tokensForWordBudget_clamp();
     void tokensForWordBudget_continueSlack();
+    void softenSampling_reasonerModel();
+    void softenSampling_manualHigh();
+    void softenSampling_manualLow();
+    void softenSampling_autoNotSoftened();
 };
 
 void TestLlmParams::isReasonerModel_matches()
@@ -101,6 +105,47 @@ void TestLlmParams::tokensForWordBudget_continueSlack()
     // continue: slack=1.5, thinkingBudget=0
     // words=1000 -> 1500 + 320 + 0 = 1820
     QCOMPARE(LlmParams::tokensForWordBudget(1000, 0, 0, 1.5), 1820);
+}
+
+void TestLlmParams::softenSampling_reasonerModel()
+{
+    auto src = LlmParams::buildSampling(3, false, 2, 4000);
+    QVERIFY(src.thinkingBudget.has_value());
+    QVERIFY(src.reasoningEffort.has_value());
+
+    auto softened = LlmParams::softenSampling(src, QStringLiteral("deepseek-r1"), false, 2);
+    QVERIFY(!softened.thinkingBudget.has_value());
+    QVERIFY(!softened.reasoningEffort.has_value());
+    QVERIFY(softened.temperature < 0);  // sentinel -1 means do not send temperature
+}
+
+void TestLlmParams::softenSampling_manualHigh()
+{
+    auto src = LlmParams::buildSampling(3, false, 3, 4000);
+    QVERIFY(src.thinkingBudget.has_value());
+    QVERIFY(src.reasoningEffort.has_value());
+
+    auto softened = LlmParams::softenSampling(src, QStringLiteral("deepseek-chat"), false, 3);
+    QVERIFY(!softened.thinkingBudget.has_value());
+    QVERIFY(!softened.reasoningEffort.has_value());
+    QCOMPARE(softened.temperature, src.temperature);
+}
+
+void TestLlmParams::softenSampling_manualLow()
+{
+    auto src = LlmParams::buildSampling(3, false, 1, 4000);
+    auto softened = LlmParams::softenSampling(src, QStringLiteral("deepseek-chat"), false, 1);
+    QCOMPARE(softened.thinkingBudget.has_value(), src.thinkingBudget.has_value());
+    QCOMPARE(softened.reasoningEffort.has_value(), src.reasoningEffort.has_value());
+    QCOMPARE(softened.temperature, src.temperature);
+}
+
+void TestLlmParams::softenSampling_autoNotSoftened()
+{
+    auto src = LlmParams::buildSampling(3, true, 4, 4000);
+    auto softened = LlmParams::softenSampling(src, QStringLiteral("deepseek-chat"), true, 4);
+    QCOMPARE(softened.thinkingBudget.has_value(), src.thinkingBudget.has_value());
+    QVERIFY(!softened.reasoningEffort.has_value());
 }
 
 QTEST_GUILESS_MAIN(TestLlmParams)

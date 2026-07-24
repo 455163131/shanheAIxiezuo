@@ -54,4 +54,29 @@ int tokensForWordBudget(int targetWords, int thinkingBudget,
     return total;
 }
 
+SamplingFields softenSampling(const SamplingFields &src, const QString &model,
+                             bool thinkingAuto, int thinkingIndex)
+{
+    SamplingFields out = src;
+
+    // Rule 1: reasoner model -> drop all params (temperature/reasoning_effort/thinking_budget)
+    if (isReasonerModel(model)) {
+        out.reasoningEffort = std::nullopt;
+        out.thinkingBudget = std::nullopt;
+        out.temperature = -1.0;  // sentinel: HttpLlmClient skips temperature when < 0
+        return out;
+    }
+
+    // Rule 2: non-reasoner + manual high/xhigh/max (thinkingAuto=false, thinkingIndex>=2)
+    //         -> drop reasoning_effort/thinking_budget, keep temperature
+    if (!thinkingAuto && thinkingIndex >= 2) {
+        out.reasoningEffort = std::nullopt;
+        out.thinkingBudget = std::nullopt;
+        return out;
+    }
+
+    // Rule 3: others -> no softening
+    return out;
+}
+
 } // namespace LlmParams

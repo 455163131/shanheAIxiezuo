@@ -55,4 +55,14 @@ SamplingFields buildSampling(int creativityIndex, bool thinkingAuto,
 int tokensForWordBudget(int targetWords, int thinkingBudget,
                         int userMaxTokens, double slack = 1.35);
 
+// Softens sampling fields based on model type and thinking-level selection.
+// Rule 1: reasoner model -> drop reasoning_effort/thinking_budget and set
+//         temperature to -1 (sentinel: HttpLlmClient skips temperature < 0).
+// Rule 2: non-reasoner + manual high/xhigh/max (thinkingAuto=false,
+//         thinkingIndex>=2) -> drop reasoning_effort/thinking_budget, keep
+//         temperature untouched.
+// Rule 3: everything else (auto mode, manual low/medium) -> no softening.
+SamplingFields softenSampling(const SamplingFields &src, const QString &model,
+                             bool thinkingAuto, int thinkingIndex);
+
 } // namespace LlmParams
