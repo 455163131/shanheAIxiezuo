@@ -150,10 +150,11 @@ Item {
             clip: true
             contentWidth: availableWidth
             background: Rectangle { color: "transparent" }
-            Flow {
-                wrapMode: Flow.Wrap
-                width: parent.width
-                spacing: Theme.sp4
+            GridLayout {
+                columns: 3
+                Layout.fillWidth: true
+                rowSpacing: Theme.sp4
+                columnSpacing: Theme.sp4
                 Repeater {
                     model: ShanHe.books
                     delegate: Rectangle {

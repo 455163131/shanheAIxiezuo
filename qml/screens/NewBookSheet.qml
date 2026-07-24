@@ -243,13 +243,15 @@ Popup {
                                 text: sheet.bookTitle
                                 onTextChanged: sheet.bookTitle = text
                             }
-                            Flow {
-                                wrapMode: Flow.Wrap
+                            GridLayout {
+                                columns: 3
                                 Layout.fillWidth: true
-                                spacing: Theme.sp2
+                                rowSpacing: Theme.sp2
+                                columnSpacing: Theme.sp2
                                 Repeater {
                                     model: sheet.titleCandidates
                                     delegate: Rectangle {
+                                        Layout.fillWidth: true
                                         radius: Theme.radiusPill
                                         color: titleMa.containsMouse ? Theme.primary : Theme.surface2
                                         border.color: Theme.line; border.width: 1
@@ -327,12 +329,15 @@ Popup {
                                 Item { Layout.fillWidth: true }
                                 Label { text: sheet.selectedGenre ? ("已选：" + sheet.selectedGenre.name) : "未选择"; color: Theme.primaryHi; font.family: Theme.fontFamily; font.pixelSize: Theme.tSm }
                             }
-                            Flow {
-                                wrapMode: Flow.Wrap
-                                Layout.fillWidth: true; spacing: Theme.sp3
+                            GridLayout {
+                                columns: 2
+                                Layout.fillWidth: true
+                                rowSpacing: Theme.sp3
+                                columnSpacing: Theme.sp3
                                 Repeater {
                                     model: sheet.filtered
                                     delegate: GenreCard {
+                                        Layout.fillWidth: true
                                         genre: modelData
                                         selected: sheet.selectedGenre && sheet.selectedGenre.id === modelData.id
                                         onCardClicked: function (g) { sheet.selectedGenre = g }
@@ -350,12 +355,15 @@ Popup {
                             RowLayout { spacing: Theme.sp2
                                 Label { text: "③ 你想要的风格基调是？（可多选）"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                             }
-                            Flow {
-                                wrapMode: Flow.Wrap
-                                Layout.fillWidth: true; spacing: Theme.sp2
+                            GridLayout {
+                                columns: 3
+                                Layout.fillWidth: true
+                                rowSpacing: Theme.sp2
+                                columnSpacing: Theme.sp2
                                 Repeater {
                                     model: sheet.toneOptions
                                     delegate: Rectangle {
+                                        Layout.fillWidth: true
                                         radius: Theme.radiusPill
                                         color: toneMa.containsMouse ? Theme.surfaceHover : (selectedTones.indexOf(modelData) >= 0 ? Theme.primary : Theme.surface2)
                                         border.color: selectedTones.indexOf(modelData) >= 0 ? Theme.primary : Theme.line
