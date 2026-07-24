@@ -10,6 +10,10 @@ Item {
     property bool elevated: false
     default property alias content: inner.data
 
+    // ★ 关键：让 Card 高度 = inner 子元素高度（不依赖 anchors.fill 的循环）
+    implicitWidth: Math.max(120, inner.childrenRect.width) + (root.elevated ? Theme.shMdY * 2 : 0)
+    implicitHeight: inner.childrenRect.height + (root.elevated ? Theme.shMdY * 2 : 0)
+
     // 阴影层：垫在卡片背后的半透明圆角矩形，纯原生模拟（Qt 原生 layer 无 shadow 属性）
     Rectangle {
         anchors.fill: parent
@@ -31,5 +35,12 @@ Item {
         border.color: root.bordered ? Theme.line : "transparent"
         border.width: 1
     }
-    Item { id: inner; anchors.fill: parent }
+    // ★ 关键：inner 高度 = 子元素内容矩形，不再 anchors.fill 撑 Card（避免循环）
+    Item {
+        id: inner
+        x: root.elevated ? Theme.shMdY : 0
+        y: root.elevated ? Theme.shMdY : 0
+        width: root.width - (root.elevated ? Theme.shMdY * 2 : 0)
+        height: childrenRect.height
+    }
 }

@@ -236,7 +236,8 @@ Popup {
                     Card {
                         Layout.fillWidth: true
                         ColumnLayout {
-                            anchors.fill: parent; anchors.margins: Theme.sp4; spacing: Theme.sp3
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                            anchors.margins: Theme.sp4; spacing: Theme.sp3
                             Label { text: "书名（可稍后让 AI 提议）"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                             TextFieldEx {
                                 Layout.fillWidth: true
@@ -291,7 +292,8 @@ Popup {
                     Card {
                         Layout.fillWidth: true
                         ColumnLayout {
-                            anchors.fill: parent; anchors.margins: Theme.sp4; spacing: Theme.sp3
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                            anchors.margins: Theme.sp4; spacing: Theme.sp3
                             RowLayout { spacing: Theme.sp2
                                 Label { text: "① 你想写哪个大方向？"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                             }
@@ -324,7 +326,8 @@ Popup {
                     Card {
                         Layout.fillWidth: true
                         ColumnLayout {
-                            anchors.fill: parent; anchors.margins: Theme.sp4; spacing: Theme.sp3
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                            anchors.margins: Theme.sp4; spacing: Theme.sp3
                             RowLayout { spacing: Theme.sp2
                                 Label { text: "② 具体想写什么题材？"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                                 Item { Layout.fillWidth: true }
@@ -352,7 +355,8 @@ Popup {
                     Card {
                         Layout.fillWidth: true
                         ColumnLayout {
-                            anchors.fill: parent; anchors.margins: Theme.sp4; spacing: Theme.sp3
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                            anchors.margins: Theme.sp4; spacing: Theme.sp3
                             RowLayout { spacing: Theme.sp2
                                 Label { text: "③ 你想要的风格基调是？（可多选）"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                             }
@@ -395,7 +399,8 @@ Popup {
                     Card {
                         Layout.fillWidth: true
                         ColumnLayout {
-                            anchors.fill: parent; anchors.margins: Theme.sp4; spacing: Theme.sp2
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                            anchors.margins: Theme.sp4; spacing: Theme.sp2
                             Label { text: "④ 这书最吸引人的点是什么？（一句话钩子）"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                             TextFieldEx {
                                 Layout.fillWidth: true
@@ -414,7 +419,8 @@ Popup {
                         Card {
                             Layout.fillWidth: true
                             ColumnLayout {
-                                anchors.fill: parent; anchors.margins: Theme.sp4; spacing: Theme.sp2
+                                anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                                anchors.margins: Theme.sp4; spacing: Theme.sp2
                                 Label { text: "上架平台"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                                 ComboBox {
                                     Layout.fillWidth: true
@@ -430,7 +436,8 @@ Popup {
                         Card {
                             Layout.fillWidth: true
                             ColumnLayout {
-                                anchors.fill: parent; anchors.margins: Theme.sp4; spacing: Theme.sp2
+                                anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                                anchors.margins: Theme.sp4; spacing: Theme.sp2
                                 Label { text: "目标字数"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                                 ComboBox {
                                     Layout.fillWidth: true
@@ -449,7 +456,8 @@ Popup {
                     Card {
                         Layout.fillWidth: true
                         ColumnLayout {
-                            anchors.fill: parent; anchors.margins: Theme.sp4; spacing: Theme.sp2
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                            anchors.margins: Theme.sp4; spacing: Theme.sp2
                             Label { text: "⑤（可选）你心里有大概的世界观或主角设定吗？"; color: Theme.ink; font.family: Theme.fontFamily; font.bold: true; font.pixelSize: Theme.tMd }
                             TextFieldEx {
                                 Layout.fillWidth: true

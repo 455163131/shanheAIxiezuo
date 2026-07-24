@@ -116,7 +116,8 @@ Popup {
         Card {
             Layout.fillWidth: true
             ColumnLayout {
-                anchors.fill: parent; anchors.margins: Theme.sp4; spacing: Theme.sp4
+                anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top
+                anchors.margins: Theme.sp4; spacing: Theme.sp4
                 GridLayout {
                     Layout.fillWidth: true
                     columns: 2
