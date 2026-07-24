@@ -21,6 +21,7 @@ target_include_directories(shanhe_tests PRIVATE
 
 target_link_libraries(shanhe_tests PRIVATE
     Qt6::Core
+    Qt6::Gui
     Qt6::Network
     Qt6::Test
 )
