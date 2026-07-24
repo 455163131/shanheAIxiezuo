@@ -361,11 +361,18 @@ Item {
                         width: Math.min(parent.width, settings.comfortWidth)
                         color: Theme.ink; font.family: Theme.fontFamily
                         font.pixelSize: settings.comfortFont
-                        lineHeight: settings.comfortLine
                         wrapMode: Text.Wrap
                         background: Rectangle { color: "transparent" }
                         selectByMouse: true
                         onTextChanged: root.onEditorTextChanged()
+                    }
+                    // TextArea 自身无 lineHeight 属性（藏在 contentItem 内部 TextEdit 里），
+                    // 用 Binding 动态设到 contentItem，避免「对不存在属性赋值」运行期崩溃。
+                    Binding {
+                        target: editor.contentItem
+                        property: "lineHeight"
+                        value: settings.comfortLine
+                        when: editor.contentItem
                     }
                 }
                 // AI 生成标识徽标

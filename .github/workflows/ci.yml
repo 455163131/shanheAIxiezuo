@@ -169,6 +169,14 @@ jobs:
             echo "qmllint 未安装，跳过（不影响主流程）"
             exit 0
           fi
-          qmllint qml/ || true
-          echo "qmllint 扫描完成（best-effort，不阻断 CI）"
+          qmllint qml/ 2>&1 | tee qmllint.log
+          # 精准拦截「对不存在属性赋值」这类致命错误（qmlcachegen 不校验、
+          # CI 不启动 GUI 就发现不了，只能靠本机双击暴露）。qmllint 对此以
+          # "Unknown property" 形式报告。命中即让本 job 标红（但 job 设了
+          # continue-on-error，不阻塞整体合并），由开发者据此修复。
+          if grep -qiE "unknown property" qmllint.log; then
+            echo "::error::qmllint 发现 Unknown property（致命 QML 属性错误），请修复后再合并"
+            exit 1
+          fi
+          echo "qmllint 扫描完成（无 Unknown property）"
         shell: bash
