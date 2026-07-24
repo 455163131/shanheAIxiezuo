@@ -13,8 +13,7 @@ import ShanHe 1.0
 // 持久化：章节正文按章存储，切换 / 编辑 / 生成后自动落盘，重启可从书架恢复。
 Item {
     id: root
-    property var book
-    property var stackView
+    property var book: win.currentBook
     property var genre: (book && book.genreId) ? ShanHe.genreById(book.genreId) : null
 
     property bool generating: false
@@ -264,7 +263,7 @@ Item {
                 RowLayout {
                     spacing: Theme.sp1
                     Icon { name: "chevron-left"; color: Theme.sub; size: 16 }
-                    RippleButton { text: "返回"; ghost: true; onClicked: { root.persist(); if (root.stackView) root.stackView.pop() } }
+                    RippleButton { text: "返回"; ghost: true; onClicked: { root.persist(); win.navigate("workbench") } }
                 }
                 Column {
                     spacing: 0

@@ -55,6 +55,7 @@ qt_add_qml_module(ShanHeWriter
         qml/screens/Studio.qml
         qml/screens/CompareView.qml
         qml/screens/SettingsSheet.qml
+        qml/screens/Library.qml
         qml/controls/Theme.qml
         qml/controls/Icon.qml
         qml/controls/Card.qml
@@ -67,6 +68,7 @@ qt_add_qml_module(ShanHeWriter
         qml/controls/Toast.qml
         qml/controls/SettingArea.qml
         qml/controls/ConfirmRow.qml
+        qml/controls/SideNav.qml
         qml/controls/ImportSmoke.qml
 )
 

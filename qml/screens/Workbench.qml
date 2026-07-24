@@ -8,7 +8,6 @@ Item {
     id: root
 
     property bool apiReady: ShanHe.configured && ShanHe.backend === "api"
-    property var stackView: StackView.view
 
     Rectangle {
         anchors.fill: parent
@@ -45,46 +44,10 @@ Item {
             }
             Item { Layout.fillWidth: true }
 
-            // API 状态徽标
-            Rectangle {
-                radius: Theme.radiusPill
-                implicitHeight: 34
-                implicitWidth: statusRow.implicitWidth + Theme.sp4
-                color: Theme.surface2
-                border.color: root.apiReady ? Theme.success : Theme.line
-                border.width: 1
-                RowLayout {
-                    id: statusRow
-                    anchors.centerIn: parent
-                    spacing: Theme.sp2
-                    Rectangle {
-                        width: 8; height: 8; radius: 4
-                        color: root.apiReady ? Theme.success : Theme.sub
-                        SequentialAnimation on opacity {
-                            running: root.apiReady; loops: Animation.Infinite
-                            NumberAnimation { from: 1; to: 0.3; duration: 900 }
-                            NumberAnimation { from: 0.3; to: 1; duration: 900 }
-                        }
-                    }
-                    Label {
-                        text: root.apiReady ? ("已接入 " + ShanHe.model) : "未接入 API"
-                        color: root.apiReady ? Theme.success : Theme.sub
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.tSm
-                    }
-                }
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: settings.open() }
-            }
-
-            RowLayout {
-                spacing: Theme.sp2
-                Icon { name: "settings"; color: Theme.sub; size: 16 }
-                RippleButton { text: "设置"; ghost: true; onClicked: settings.open() }
-            }
             RippleButton {
                 text: "开新书"
                 accent: Theme.primaryHi
-                onClicked: newBook.open()
+                onClicked: win.openNewBook()
             }
         }
 
@@ -126,7 +89,7 @@ Item {
                 RippleButton {
                     text: root.apiReady ? "开新书" : "去配置 API"
                     accent: Theme.primaryHi
-                    onClicked: root.apiReady ? newBook.open() : settings.open()
+                    onClicked: win.openNewBook()
                 }
             }
         }
@@ -239,7 +202,7 @@ Item {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: newBook.open()
+                        onClicked: win.openNewBook()
                     }
                 }
             }
@@ -261,22 +224,10 @@ Item {
                     color: Theme.sub; font.family: Theme.fontFamily; font.pixelSize: Theme.tBase
                     horizontalAlignment: Text.AlignHCenter; width: 360; wrapMode: Text.Wrap
                 }
-                RippleButton { text: "开新书"; accent: Theme.primaryHi; onClicked: newBook.open() }
+                RippleButton { text: "开新书"; accent: Theme.primaryHi; onClicked: win.openNewBook() }
             }
         }
     }
 
-    NewBookSheet { id: newBook; onAccepted: function (b) { ShanHe.createBook(b) } }
-
-    Connections {
-        target: ShanHe
-        function onBookOpened(book) {
-            if (root.stackView)
-                root.stackView.push(studioComp, { book: book, stackView: root.stackView })
-        }
     }
-
-    SettingsSheet { id: settings }
-
-    Component { id: studioComp; Studio {} }
 }

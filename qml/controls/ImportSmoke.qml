@@ -24,4 +24,6 @@ Item {
     Studio { }
     CompareView { }
     SettingsSheet { }
+    Library { }
+    SideNav { }
 }
