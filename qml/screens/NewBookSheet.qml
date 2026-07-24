@@ -228,8 +228,9 @@ Popup {
             ScrollView {
                 clip: true
                 background: Rectangle { color: "transparent" }
+                // ★ 必须 width:parent.width，不能用 Layout.fillWidth（ScrollView 不是 Layout 容器，attached property 静默失效）
                 ColumnLayout {
-                    Layout.fillWidth: true
+                    width: parent.width
                     spacing: Theme.sp4
 
                     // 书名卡
@@ -258,13 +259,18 @@ Popup {
                                         color: titleMa.containsMouse ? Theme.primary : Theme.surface2
                                         border.color: Theme.line; border.width: 1
                                         implicitHeight: 30
-                                        implicitWidth: titleLbl.implicitWidth + Theme.sp4
+                                        // ★ 删 implicitWidth：让 Layout.fillWidth 真正起作用，长书名不会撑出 cell 与邻居重叠
                                         Label {
                                             id: titleLbl
-                                            anchors.centerIn: parent
+                                            anchors.fill: parent
+                                            anchors.leftMargin: Theme.sp2
+                                            anchors.rightMargin: Theme.sp2
                                             text: modelData
                                             color: titleMa.containsMouse ? Theme.bg : Theme.body
                                             font.family: Theme.fontFamily; font.pixelSize: Theme.tSm
+                                            elide: Text.ElideRight
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
                                         }
                                         MouseArea {
                                             id: titleMa
@@ -476,8 +482,9 @@ Popup {
             ScrollView {
                 clip: true
                 background: Rectangle { color: "transparent" }
+                // ★ 必须 width:parent.width（ScrollView 不是 Layout 容器，Layout.fillWidth 在这里静默失效）
                 ColumnLayout {
-                    Layout.fillWidth: true
+                    width: parent.width
                     spacing: Theme.sp4
                     Rectangle {
                         Layout.fillWidth: true; radius: Theme.radiusSm; color: Theme.surface2
@@ -509,8 +516,9 @@ Popup {
             ScrollView {
                 clip: true
                 background: Rectangle { color: "transparent" }
+                // ★ 必须 width:parent.width（ScrollView 不是 Layout 容器，Layout.fillWidth 在这里静默失效）
                 ColumnLayout {
-                    Layout.fillWidth: true
+                    width: parent.width
                     spacing: Theme.sp4
                     Rectangle {
                         Layout.fillWidth: true; radius: Theme.radiusSm; color: Theme.surface2
@@ -557,8 +565,9 @@ Popup {
             ScrollView {
                 clip: true
                 background: Rectangle { color: "transparent" }
+                // ★ 必须 width:parent.width（ScrollView 不是 Layout 容器，Layout.fillWidth 在这里静默失效）
                 ColumnLayout {
-                    Layout.fillWidth: true
+                    width: parent.width
                     spacing: Theme.sp3
                     RowLayout { spacing: Theme.sp2
                         Icon { name: "check"; color: Theme.success; size: 16 }
