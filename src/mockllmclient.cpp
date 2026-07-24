@@ -74,6 +74,7 @@ void MockLlmClient::streamChat(const QJsonObject &payload,
                                std::function<void(const QString &)> onChunk,
                                std::function<void(bool, const QString &)> onDone)
 {
+    m_aborted = false;
     m_full = buildScriptedText(payload);
     m_pos = 0;
     m_onChunk = onChunk;
@@ -83,6 +84,10 @@ void MockLlmClient::streamChat(const QJsonObject &payload,
 
 void MockLlmClient::tick()
 {
+    if (m_aborted) {
+        m_timer->stop();
+        return;
+    }
     if (m_pos >= m_full.size()) {
         m_timer->stop();
         if (m_onDone) m_onDone(true, QString());
@@ -106,7 +111,14 @@ void MockLlmClient::complete(const QJsonObject &,
 
 void MockLlmClient::abort()
 {
-    m_timer->stop();
+    m_aborted = true;
+    if (m_timer) m_timer->stop();
+    if (m_onDone) {
+        auto cb = std::move(m_onDone);
+        m_onChunk = nullptr;
+        m_onDone = nullptr;
+        cb(false, QStringLiteral("aborted"));
+    }
 }
 
 bool MockLlmClient::isStreaming() const

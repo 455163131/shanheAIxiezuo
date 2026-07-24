@@ -13,6 +13,7 @@
 #include "personas.h"
 #include "windowscredentialstore.h"
 #include "fakellmclient.h"
+#include "mockllmclient.h"
 
 class ShanHeTests : public QObject
 {
@@ -28,6 +29,7 @@ private slots:
     void credentialStore_behaves();
     void bridge_decodeApiKeyDistinguishesFailure();
     void httpLlmClient_tlsCheck();
+    void mockLlmClient_abortsImmediately();
 };
 
 void ShanHeTests::sseParser_singleLine()
@@ -280,6 +282,33 @@ void ShanHeTests::httpLlmClient_tlsCheck()
     } else {
         QCOMPARE(spy.count(), 1);
     }
+}
+
+void ShanHeTests::mockLlmClient_abortsImmediately()
+{
+    // Bug-7: abort() must stop timer, call onDone(false), isStreaming() returns false.
+    MockLlmClient mock;
+    QVERIFY(!mock.isStreaming());
+
+    QJsonObject payload;
+    payload["messages"] = QJsonArray{};
+    payload["stream"] = true;
+    bool gotChunk = false;
+    bool gotDone = false;
+    bool doneOk = true;
+    mock.streamChat(payload,
+        [&](const QString &) { gotChunk = true; },
+        [&](bool ok, const QString &) { gotDone = true; doneOk = ok; });
+
+    QVERIFY(mock.isStreaming());
+    mock.abort();
+    QVERIFY(!mock.isStreaming());
+
+    QTest::qWait(200);
+    QVERIFY(!gotChunk || !mock.isStreaming());
+    // abort must notify onDone(false, "aborted") so upstream UI can finalize state.
+    QVERIFY2(gotDone, "abort should call onDone so callers can finalize state");
+    QVERIFY2(!doneOk, "abort onDone should report ok=false");
 }
 
 QTEST_GUILESS_MAIN(ShanHeTests)

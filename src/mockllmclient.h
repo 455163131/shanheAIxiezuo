@@ -36,6 +36,7 @@ private:
     QTimer *m_timer = nullptr;
     QString m_full;
     int m_pos = 0;
+    bool m_aborted = false;
     std::function<void(const QString &)> m_onChunk;
     std::function<void(bool, const QString &)> m_onDone;
 };
