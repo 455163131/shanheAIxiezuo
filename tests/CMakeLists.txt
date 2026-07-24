@@ -27,3 +27,18 @@ target_link_libraries(shanhe_tests PRIVATE
 )
 
 add_test(NAME shanhe_tests COMMAND shanhe_tests)
+
+
+# ---- TextUtils pure-function tests (Task 6) ----
+qt_add_executable(test_textutils
+    test_textutils.cpp
+    ../src/textutils.cpp
+)
+target_include_directories(test_textutils PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+target_link_libraries(test_textutils PRIVATE
+    Qt6::Core
+    Qt6::Test
+)
+add_test(NAME test_textutils COMMAND test_textutils)

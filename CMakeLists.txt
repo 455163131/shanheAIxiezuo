@@ -30,6 +30,8 @@ qt_add_executable(ShanHeWriter
     src/personas.cpp
     src/windowscredentialstore.h
     src/windowscredentialstore.cpp
+    src/textutils.h
+    src/textutils.cpp
 )
 
 # ---- 流派数据（QML/C++ 共用，编译进资源）----
