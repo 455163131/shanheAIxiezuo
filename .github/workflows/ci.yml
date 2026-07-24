@@ -141,3 +141,34 @@ jobs:
       - name: Build (clazy instruments)
         run: cmake --build build --parallel
         shell: bash
+
+  # ---------- 4) qmllint QML 静态检查（best-effort）----------
+  # 抓「对不存在属性赋值」这类 qmlcachegen 不校验、CI 又不启动 GUI 就无法
+  # 发现的错误（如本次的 layer.shadow.*）。qmllint 对 Qt 内置类型（Item.layer
+  # 等）能直接判定 Unknown property，无需解析自定义 ShanHe module。
+  # 探测式：qmllint 不可用则跳过；continue-on-error 保证永不阻塞主流程。
+  qml-lint:
+    name: qmllint (best-effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        id: qt
+        with:
+          version: '6.8.1'
+          host: linux
+          cache: true
+          tools: 'qttools'
+
+      - name: qmllint scan
+        run: |
+          if ! command -v qmllint >/dev/null 2>&1; then
+            echo "qmllint 未安装，跳过（不影响主流程）"
+            exit 0
+          fi
+          qmllint qml/ || true
+          echo "qmllint 扫描完成（best-effort，不阻断 CI）"
+        shell: bash

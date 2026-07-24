@@ -67,6 +67,7 @@ qt_add_qml_module(ShanHeWriter
         qml/controls/Toast.qml
         qml/controls/SettingArea.qml
         qml/controls/ConfirmRow.qml
+        qml/controls/ImportSmoke.qml
 )
 
 set_target_properties(ShanHeWriter PROPERTIES
