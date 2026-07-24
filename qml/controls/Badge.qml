@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 import ShanHe 1.0
 
 // 状态 / 标签徽章：soft（柔光底）或 outlined（描边）两种样式。
