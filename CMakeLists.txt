@@ -95,6 +95,10 @@ qt_add_qml_module(ShanHeWriter
         qml/controls/SideNav.qml
         qml/controls/ThinkingBudgetSlider.qml
         qml/controls/WordCountRange.qml
+        qml/controls/StreamOutput.qml
+        qml/controls/ActionButtons.qml
+        qml/controls/Splitter.qml
+        qml/controls/CreativitySlider.qml
         qml/controls/ImportSmoke.qml
 )
 

@@ -28,4 +28,8 @@ Item {
     SideNav { }
     ThinkingBudgetSlider { }
     WordCountRange { }
+    StreamOutput { }
+    ActionButtons { }
+    Splitter { }
+    CreativitySlider { }
 }
