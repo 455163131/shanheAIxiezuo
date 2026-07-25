@@ -7,7 +7,7 @@ Item {
     width: 6
     implicitWidth: 6
     cursorShape: Qt.SplitHCursor
-    focusPolicy: Qt.TabFocus
+    activeFocusOnTab: true
     Accessible.name: "分隔条"
     Accessible.description: "拖拽调整面板宽度"
     Accessible.role: Accessible.Splitter
