@@ -26,4 +26,6 @@ Item {
     SettingsSheet { }
     Library { }
     SideNav { }
+    ThinkingBudgetSlider { }
+    WordCountRange { }
 }
