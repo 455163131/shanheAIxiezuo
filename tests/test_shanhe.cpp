@@ -9,6 +9,9 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QDateTime>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QTemporaryDir>
 
 #include "sseparser.h"
 #include "book.h"
@@ -45,6 +48,7 @@ private slots:
     void book_chapterSerializationRoundtrip();
     void book_bookPrefsRoundtrip();
     void projectStore_migrateV2toV3();
+    void projectStore_importFromAiWritingDb();
     void configIo_exportImportRoundtrip();
 };
 
@@ -635,6 +639,102 @@ void ShanHeTests::projectStore_migrateV2toV3()
 
     // Clean up
     QDir(store.rootPath()).removeRecursively();
+}
+
+
+
+void ShanHeTests::projectStore_importFromAiWritingDb()
+{
+    // Skip if SQLite driver not available
+    if (!QSqlDatabase::isDriverAvailable("QSQLITE")) QSKIP("QSQLITE not available");
+
+    QTemporaryDir tmpDir;
+    QString booksDir = tmpDir.path() + "/books";
+    QDir().mkpath(booksDir);
+
+    // Create a minimal project1-style ai_writing.db
+    QString dbPath = tmpDir.path() + "/ai_writing.db";
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", "import_test");
+        db.setDatabaseName(dbPath);
+        QVERIFY(db.open());
+
+        QSqlQuery q(db);
+        q.exec("CREATE TABLE novels (id INTEGER PRIMARY KEY, title TEXT, style TEXT)");
+        q.exec("INSERT INTO novels (id, title, style) VALUES (1, '测试小说', '番茄爽文风')");
+
+        q.exec("CREATE TABLE chapters (id INTEGER PRIMARY KEY, novel_id INTEGER, title TEXT, content TEXT, summary TEXT, sort_order INTEGER, word_count INTEGER)");
+        q.exec("INSERT INTO chapters VALUES (1, 1, '第1章 觉醒', '第一章正文。', '第一章摘要', 1, 6)");
+        q.exec("INSERT INTO chapters VALUES (2, 1, '第2章 修真', '第二章正文。', '第二章摘要', 2, 6)");
+
+        q.exec("CREATE TABLE characters (id INTEGER PRIMARY KEY, novel_id INTEGER, name TEXT, description TEXT, folder_id INTEGER, sort_order INTEGER, pinned INTEGER, hidden INTEGER)");
+        q.exec("INSERT INTO characters VALUES (1, 1, '张三', '18岁修仙者', 1, 1, 0, 0)");
+
+        q.exec("CREATE TABLE character_folders (id INTEGER PRIMARY KEY, novel_id INTEGER, name TEXT, sort_order INTEGER)");
+        q.exec("INSERT INTO character_folders VALUES (1, 1, '主角阵营', 1)");
+
+        q.exec("CREATE TABLE terms (id INTEGER PRIMARY KEY, novel_id INTEGER, name TEXT, content TEXT, category TEXT)");
+        q.exec("INSERT INTO terms VALUES (1, 1, '筑基期', '修仙基础阶段', '修炼境界')");
+
+        q.exec("CREATE TABLE knowledge_cards (id INTEGER PRIMARY KEY, novel_id INTEGER, title TEXT, content TEXT, category TEXT, is_global INTEGER)");
+        q.exec("INSERT INTO knowledge_cards VALUES (1, 1, '修仙体系', '筑基-金丹-元婴', '修炼体系', 0)");
+
+        q.exec("CREATE TABLE memos (id INTEGER PRIMARY KEY, novel_id INTEGER, title TEXT, content TEXT)");
+        q.exec("INSERT INTO memos VALUES (1, 1, '注意', '主角金手指别太早')");
+
+        q.exec("CREATE TABLE outlines (id INTEGER PRIMARY KEY, novel_id INTEGER, title TEXT, content TEXT, type TEXT)");
+        q.exec("INSERT INTO outlines VALUES (1, 1, '主线大纲', '第1章 觉醒 -> 第2章 修真', 'main')");
+
+        q.exec("CREATE TABLE templates (id INTEGER PRIMARY KEY, type TEXT, title TEXT, content TEXT)");
+        q.exec("INSERT INTO templates VALUES (1, 'style', '老模板', '旧风格内容')");
+
+        db.close();
+    }
+    QSqlDatabase::removeDatabase("import_test");
+
+    // Import
+    bool ok = ProjectStore::importFromAiWritingDb(dbPath, booksDir);
+    QVERIFY(ok);
+
+    // Verify book created - use listBooks with a custom root path
+    // We need to check the directory directly since ProjectStore uses AppDataLocation
+    QDir booksDirObj(booksDir);
+    QStringList bookDirs = booksDirObj.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    QCOMPARE(bookDirs.size(), 1);
+
+    QString newBookId = bookDirs[0];
+    QString newBookDir = booksDir + "/" + newBookId;
+    QVERIFY(QDir(newBookDir).exists());
+
+    // Verify meta.json
+    QFile metaFile(newBookDir + "/meta.json");
+    QVERIFY(metaFile.open(QIODevice::ReadOnly));
+    QJsonObject meta = QJsonDocument::fromJson(metaFile.readAll()).object();
+    QCOMPARE(meta["title"].toString(), QStringLiteral("测试小说"));
+    QCOMPARE(meta["schemaVersion"].toInt(), 3);
+
+    // Verify chapter text + meta
+    QVERIFY(QFile::exists(newBookDir + "/chapters/ch01.txt"));
+    QVERIFY(QFile::exists(newBookDir + "/chapters/ch01.meta.json"));
+    QFile meta1(newBookDir + "/chapters/ch01.meta.json");
+    meta1.open(QIODevice::ReadOnly);
+    QJsonObject ch1 = QJsonDocument::fromJson(meta1.readAll()).object();
+    QCOMPARE(ch1["title"].toString(), QStringLiteral("第1章 觉醒"));
+    QCOMPARE(ch1["summary"].toString(), QStringLiteral("第一章摘要"));
+
+    // Verify characters
+    QFile charsFile(newBookDir + "/characters.json");
+    charsFile.open(QIODevice::ReadOnly);
+    QJsonObject chars = QJsonDocument::fromJson(charsFile.readAll()).object();
+    QCOMPARE(chars["items"].toArray().size(), 1);
+    QCOMPARE(chars["items"][0].toObject()["name"].toString(), QStringLiteral("张三"));
+    QCOMPARE(chars["folders"].toArray().size(), 1);
+
+    // Verify other entities exist
+    QVERIFY(QFile::exists(newBookDir + "/terms.json"));
+    QVERIFY(QFile::exists(newBookDir + "/knowledge.json"));
+    QVERIFY(QFile::exists(newBookDir + "/memos.json"));
+    QVERIFY(QFile::exists(newBookDir + "/outlines.json"));
 }
 
 QTEST_GUILESS_MAIN(ShanHeTests)

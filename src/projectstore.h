@@ -47,6 +47,8 @@ public:
     QString lastBookId() const;
     void setLastBookId(const QString &id);
 
+    static bool importFromAiWritingDb(const QString &dbPath, const QString &booksDir);
+
     // 契约文件清单（供测试 / 调试断言目录布局）
     QString bookDir(const QString &id) const;
     QString biblePath(const QString &id) const;

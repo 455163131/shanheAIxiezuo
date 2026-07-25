@@ -9,6 +9,9 @@
 #include <QUuid>
 #include <QDateTime>
 #include <QDebug>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlError>
 
 namespace {
 constexpr int SCHEMA_VERSION = 3;
@@ -441,4 +444,271 @@ void ProjectStore::setLastBookId(const QString &id)
     QFile f(rootPath() + QStringLiteral("/.last"));
     if (f.open(QIODevice::WriteOnly | QIODevice::Truncate))
         f.write(id.toUtf8());
+}
+
+
+// ---- Import from project1 ai_writing.db (SQLite) ----
+bool ProjectStore::importFromAiWritingDb(const QString &dbPath, const QString &booksDir)
+{
+    if (!QSqlDatabase::isDriverAvailable("QSQLITE")) {
+        qWarning() << "QSQLITE driver not available, cannot import";
+        return false;
+    }
+
+    if (!QFile::exists(dbPath)) {
+        qWarning() << "Database file not found:" << dbPath;
+        return false;
+    }
+
+    QDir().mkpath(booksDir);
+
+    const QString connName = QStringLiteral("ai_writing_import");
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", connName);
+        db.setDatabaseName(dbPath);
+        if (!db.open()) {
+            qWarning() << "Failed to open database:" << db.lastError().text();
+            QSqlDatabase::removeDatabase(connName);
+            return false;
+        }
+
+        // Read first novel
+        QSqlQuery novelQ(db);
+        novelQ.exec("SELECT id, title, style FROM novels ORDER BY id LIMIT 1");
+        if (!novelQ.next()) {
+            qWarning() << "No novels found in database";
+            db.close();
+            QSqlDatabase::removeDatabase(connName);
+            return false;
+        }
+
+        int novelId = novelQ.value(0).toInt();
+        QString title = novelQ.value(1).toString();
+        QString style = novelQ.value(2).toString();
+
+        // Generate new book id
+        QString bookId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        QString bookDir = booksDir + QLatin1Char('/') + bookId;
+        QString chaptersDir = bookDir + QStringLiteral("/chapters");
+        QDir().mkpath(bookDir);
+        QDir().mkpath(chaptersDir);
+
+        // Default prefs
+        QVariantMap prefs;
+        prefs[QStringLiteral("creativityIndex")] = 3;
+        prefs[QStringLiteral("thinkingAuto")] = true;
+        prefs[QStringLiteral("thinkingIndex")] = 2;
+        prefs[QStringLiteral("wordCountMin")] = 2000;
+        prefs[QStringLiteral("wordCountMax")] = 2500;
+        prefs[QStringLiteral("recentMode")] = QStringLiteral("lastN");
+        prefs[QStringLiteral("recentValue")] = 2000;
+
+        // Read chapters
+        QVariantList chaptersMeta;
+        QSqlQuery chapQ(db);
+        chapQ.prepare("SELECT title, content, summary, sort_order, word_count FROM chapters WHERE novel_id = :novelId ORDER BY sort_order");
+        chapQ.bindValue(":novelId", novelId);
+        chapQ.exec();
+
+        int chapNum = 0;
+        while (chapQ.next()) {
+            ++chapNum;
+            QString chTitle = chapQ.value(0).toString();
+            QString chContent = chapQ.value(1).toString();
+            QString chSummary = chapQ.value(2).toString();
+            int wordCount = chapQ.value(4).toInt();
+
+            QString chBase = chapterBaseName(chapNum);
+
+            // Write chapter text
+            writeTextFile(chaptersDir + QLatin1Char('/') + chBase + QStringLiteral(".txt"), chContent);
+
+            // Write chapter meta
+            QVariantMap chMeta;
+            chMeta[QStringLiteral("title")] = chTitle;
+            chMeta[QStringLiteral("summary")] = chSummary;
+            chMeta[QStringLiteral("wordCount")] = wordCount;
+            chMeta[QStringLiteral("aiConfig")] = QVariantMap();
+            writeJsonFile(chaptersDir + QLatin1Char('/') + chBase + QStringLiteral(".meta.json"), chMeta);
+
+            chaptersMeta.append(chTitle);
+        }
+
+        // Write meta.json
+        QVariantMap meta;
+        meta[QStringLiteral("schemaVersion")] = SCHEMA_VERSION;
+        meta[QStringLiteral("id")] = bookId;
+        meta[QStringLiteral("title")] = title;
+        meta[QStringLiteral("chaptersMeta")] = chaptersMeta;
+        meta[QStringLiteral("prefs")] = prefs;
+        meta[QStringLiteral("createdAt")] = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+        meta[QStringLiteral("updatedAt")] = QDateTime::currentDateTimeUtc().toString(Qt::ISODate);
+        writeJsonFile(bookDir + QStringLiteral("/meta.json"), meta);
+
+        // Write bible.md (empty for now)
+        writeTextFile(bookDir + QStringLiteral("/bible.md"), QString());
+
+        // Read characters and character_folders
+        QVariantList charItems;
+        QSqlQuery charQ(db);
+        charQ.prepare("SELECT id, name, description, folder_id, sort_order, pinned, hidden FROM characters WHERE novel_id = :novelId ORDER BY sort_order");
+        charQ.bindValue(":novelId", novelId);
+        charQ.exec();
+        while (charQ.next()) {
+            QVariantMap item;
+            item[QStringLiteral("id")] = charQ.value(0).toInt();
+            item[QStringLiteral("name")] = charQ.value(1).toString();
+            item[QStringLiteral("description")] = charQ.value(2).toString();
+            item[QStringLiteral("folderId")] = charQ.value(3).toInt();
+            item[QStringLiteral("sortOrder")] = charQ.value(4).toInt();
+            item[QStringLiteral("pinned")] = charQ.value(5).toBool();
+            item[QStringLiteral("hidden")] = charQ.value(6).toBool();
+            charItems.append(item);
+        }
+
+        QVariantList charFolders;
+        QSqlQuery charFolderQ(db);
+        charFolderQ.prepare("SELECT id, name, sort_order FROM character_folders WHERE novel_id = :novelId ORDER BY sort_order");
+        charFolderQ.bindValue(":novelId", novelId);
+        charFolderQ.exec();
+        while (charFolderQ.next()) {
+            QVariantMap folder;
+            folder[QStringLiteral("id")] = charFolderQ.value(0).toInt();
+            folder[QStringLiteral("name")] = charFolderQ.value(1).toString();
+            folder[QStringLiteral("sortOrder")] = charFolderQ.value(2).toInt();
+            charFolders.append(folder);
+        }
+
+        QVariantMap charsRoot;
+        charsRoot[QStringLiteral("schemaVersion")] = 1;
+        charsRoot[QStringLiteral("items")] = charItems;
+        charsRoot[QStringLiteral("folders")] = charFolders;
+        writeJsonFile(bookDir + QStringLiteral("/characters.json"), charsRoot);
+
+        // Helper function to import simple entity tables
+        auto importSimpleEntity = [&](const QString &tableName, const QString &fileName,
+                                       const QString &idCol, const QStringList &fieldMap) {
+            QVariantList items;
+            QSqlQuery q(db);
+            QString queryStr = QString("SELECT %1").arg(idCol);
+            for (const QString &field : fieldMap) {
+                queryStr += ", " + field;
+            }
+            queryStr += QString(" FROM %1 WHERE novel_id = :novelId").arg(tableName);
+            q.prepare(queryStr);
+            q.bindValue(":novelId", novelId);
+            q.exec();
+            while (q.next()) {
+                QVariantMap item;
+                item[QStringLiteral("id")] = q.value(0).toInt();
+                for (int i = 0; i < fieldMap.size(); ++i) {
+                    item[fieldMap[i]] = q.value(i + 1);
+                }
+                items.append(item);
+            }
+            QVariantMap root;
+            root[QStringLiteral("schemaVersion")] = 1;
+            root[QStringLiteral("items")] = items;
+            writeJsonFile(bookDir + QLatin1Char('/') + fileName, root);
+        };
+
+        // Import terms
+        importSimpleEntity("terms", "terms.json", "id",
+                          QStringList() << "name" << "content" << "category");
+
+        // Import knowledge_cards
+        QVariantList knowledgeItems;
+        QVariantList globalKnowledgeItems;
+        QSqlQuery kq(db);
+        kq.prepare("SELECT id, title, content, category, is_global FROM knowledge_cards WHERE novel_id = :novelId");
+        kq.bindValue(":novelId", novelId);
+        kq.exec();
+        while (kq.next()) {
+            QVariantMap item;
+            item[QStringLiteral("id")] = kq.value(0).toInt();
+            item[QStringLiteral("title")] = kq.value(1).toString();
+            item[QStringLiteral("content")] = kq.value(2).toString();
+            item[QStringLiteral("category")] = kq.value(3).toString();
+            item[QStringLiteral("isGlobal")] = kq.value(4).toInt() == 1;
+            knowledgeItems.append(item);
+            if (kq.value(4).toInt() == 1) {
+                globalKnowledgeItems.append(item);
+            }
+        }
+        QVariantMap knowledgeRoot;
+        knowledgeRoot[QStringLiteral("schemaVersion")] = 1;
+        knowledgeRoot[QStringLiteral("items")] = knowledgeItems;
+        writeJsonFile(bookDir + QStringLiteral("/knowledge.json"), knowledgeRoot);
+
+        // Write global knowledge if any (at booksDir level)
+        if (!globalKnowledgeItems.isEmpty()) {
+            QString globalKPath = booksDir + QStringLiteral("/global_knowledge.json");
+            QVariantMap gRoot;
+            if (QFile::exists(globalKPath)) {
+                gRoot = readJsonFile(globalKPath).toMap();
+            }
+            if (!gRoot.contains("items")) {
+                gRoot[QStringLiteral("schemaVersion")] = 1;
+                gRoot[QStringLiteral("items")] = QVariantList();
+            }
+            QVariantList existing = gRoot["items"].toList();
+            for (const QVariant &item : globalKnowledgeItems) {
+                existing.append(item);
+            }
+            gRoot[QStringLiteral("items")] = existing;
+            writeJsonFile(globalKPath, gRoot);
+        }
+
+        // Import memos
+        importSimpleEntity("memos", "memos.json", "id",
+                          QStringList() << "title" << "content");
+
+        // Import outlines
+        importSimpleEntity("outlines", "outlines.json", "id",
+                          QStringList() << "title" << "content" << "type");
+
+        // Import templates (merge to global templates.json at booksDir level)
+        QSqlQuery tplQ(db);
+        tplQ.exec("SELECT type, title, content FROM templates");
+        QString tplPath = booksDir + QStringLiteral("/templates.json");
+        QVariantMap tplRoot;
+        if (QFile::exists(tplPath)) {
+            tplRoot = readJsonFile(tplPath).toMap();
+        }
+        if (!tplRoot.contains("items")) {
+            tplRoot[QStringLiteral("schemaVersion")] = 1;
+            tplRoot[QStringLiteral("items")] = QVariantList();
+        }
+        QVariantList tplItems = tplRoot["items"].toList();
+        QSet<QString> existingTitles;
+        for (const QVariant &item : tplItems) {
+            existingTitles.insert(item.toMap()["title"].toString());
+        }
+        int nextTplId = tplItems.size() + 1;
+        while (tplQ.next()) {
+            QString tplTitle = tplQ.value(1).toString();
+            if (!existingTitles.contains(tplTitle)) {
+                QVariantMap item;
+                item[QStringLiteral("id")] = nextTplId++;
+                item[QStringLiteral("type")] = tplQ.value(0).toString();
+                item[QStringLiteral("title")] = tplTitle;
+                item[QStringLiteral("content")] = tplQ.value(2).toString();
+                tplItems.append(item);
+                existingTitles.insert(tplTitle);
+            }
+        }
+        tplRoot[QStringLiteral("items")] = tplItems;
+        writeJsonFile(tplPath, tplRoot);
+
+        // Write other required files
+        writeJsonFile(bookDir + QStringLiteral("/outline.json"),
+                     QVariantMap{{QStringLiteral("book"), QString()}});
+        writeJsonFile(bookDir + QStringLiteral("/summaries.json"), QVariantMap());
+        writeTextFile(bookDir + QStringLiteral("/template.md"), style);
+
+        db.close();
+    }
+
+    QSqlDatabase::removeDatabase(connName);
+    return true;
 }
