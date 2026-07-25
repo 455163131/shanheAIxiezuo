@@ -15,7 +15,6 @@ Control {
     property int from: 0
     property int to: 5
 
-    signal valueChanged(int value)
 
     readonly property var labels: ["离谱", "奔放", "活跃", "稳健", "克制", "死板"]
     readonly property var temps: [1.2, 1.1, 1.0, 0.9, 0.8, 0.7]
@@ -64,7 +63,6 @@ Control {
                         anchors.fill: parent
                         onClicked: {
                             root.value = root.to - idx
-                            root.valueChanged(root.value)
                         }
                     }
                 }

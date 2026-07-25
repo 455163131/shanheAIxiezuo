@@ -111,6 +111,11 @@ Item {
             border.color: ShanHe.configured ? Theme.success : Theme.line
             border.width: 1
 
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.navigate("settings")
+            }
             ColumnLayout {
                 id: statusCol
                 anchors.fill: parent
@@ -144,12 +149,6 @@ Item {
                     font.pixelSize: Theme.tXs
                     elide: Text.ElideRight
                     Layout.fillWidth: true
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.navigate("settings")
                 }
             }
         }

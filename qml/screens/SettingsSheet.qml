@@ -21,6 +21,7 @@ Popup {
         { name: "Moonshot Kimi",    base: "https://api.moonshot.cn/v1",                         model: "moonshot-v1-8k" },
         { name: "智谱 GLM",         base: "https://open.bigmodel.cn/api/paas/v4",               model: "glm-4-flash" }
     ]
+    property var modelList: []
 
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.durNormal; easing.type: Easing.OutCubic }
@@ -40,13 +41,15 @@ Popup {
     function loadCurrent() {
         baseEdit.text = ShanHe.apiBase
         keyEdit.text = ShanHe.apiKey
-        modelEdit.text = ShanHe.model
+        modelCombo.editText = ShanHe.model
         tempSlider.value = ShanHe.temperature
         useApiSwitch.checked = (ShanHe.backend === "api")
         statusLabel.text = ShanHe.configured
             ? "当前：已配置 · " + ShanHe.model
             : "当前：未配置（使用内置演示 mock）"
         statusLabel.color = ShanHe.configured ? Theme.success : Theme.sub
+        // 重置模型列表
+        sheet.modelList = []
     }
     Component.onCompleted: loadCurrent()
 
@@ -57,6 +60,19 @@ Popup {
             testBtn.text = "测试连接"
             statusLabel.text = (ok ? "✓ " : "✗ ") + msg
             statusLabel.color = ok ? Theme.success : Theme.danger
+        }
+        function onModelsFetched(models) {
+            fetchBtn.fetchBusy = false
+            fetchBtn.enabled = true
+            sheet.modelList = models
+            statusLabel.text = "✓ 获取到 " + models.length + " 个模型"
+            statusLabel.color = Theme.success
+        }
+        function onFetchModelsError(msg) {
+            fetchBtn.fetchBusy = false
+            fetchBtn.enabled = true
+            statusLabel.text = "✗ " + msg
+            statusLabel.color = Theme.danger
         }
     }
 
@@ -103,7 +119,7 @@ Popup {
                             onExited: parent.border.color = Theme.line
                             onClicked: {
                                 baseEdit.text = modelData.base
-                                if (modelEdit.text.trim() === "") modelEdit.text = modelData.model
+                                if (modelCombo.editText.trim() === "") modelCombo.editText = modelData.model
                                 modelHint.text = "示例模型：" + modelData.model
                             }
                         }
@@ -144,9 +160,41 @@ Popup {
                     Label { text: "模型名"; color: Theme.ink; font.family: Theme.fontFamily; font.pixelSize: Theme.tBase }
                     ColumnLayout {
                         Layout.fillWidth: true; spacing: 2
-                        TextFieldEx {
-                            id: modelEdit; Layout.fillWidth: true
-                            placeholderText: "如 gpt-4o-mini / deepseek-chat / qwen-plus"
+                        RowLayout {
+                            Layout.fillWidth: true; spacing: Theme.sp2
+                            ComboBox {
+                                id: modelCombo; Layout.fillWidth: true
+                                editable: true
+                                model: modelList
+                                delegate: ItemDelegate {
+                                    width: modelCombo.width
+                                    contentItem: Label {
+                                        text: modelData
+                                        color: Theme.ink
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.tSm
+                                        elide: Text.ElideRight
+                                    }
+                                    highlighted: modelCombo.highlightedIndex === index
+                                }
+                            }
+                            RippleButton {
+                                id: fetchBtn
+                                text: fetchBusy ? "获取中…" : "获取模型"
+                                ghost: true
+                                property bool fetchBusy: false
+                                onClicked: {
+                                    // 先把当前填写的地址/密钥保存，确保 fetchModels 用的是最新值
+                                    ShanHe.saveConfig(baseEdit.text, keyEdit.text,
+                                        modelCombo.editText, tempSlider.value,
+                                        useApiSwitch.checked ? "api" : "mock")
+                                    fetchBusy = true
+                                    fetchBtn.enabled = false
+                                    statusLabel.text = "正在从 " + baseEdit.text + " 获取模型列表…"
+                                    statusLabel.color = Theme.sub
+                                    ShanHe.fetchModels()
+                                }
+                            }
                         }
                         Label { id: modelHint; text: ""; color: Theme.faint; font.family: Theme.fontFamily; font.pixelSize: Theme.tXs }
                     }
@@ -193,7 +241,7 @@ Popup {
                 text: "测试连接"
                 ghost: true
                 onClicked: {
-                    ShanHe.saveConfig(baseEdit.text, keyEdit.text, modelEdit.text,
+                    ShanHe.saveConfig(baseEdit.text, keyEdit.text, modelCombo.editText,
                                       tempSlider.value, useApiSwitch.checked ? "api" : "mock")
                     testBtn.enabled = false
                     testBtn.text = "测试中…"
@@ -208,7 +256,7 @@ Popup {
                 text: "保存"
                 accent: Theme.primaryHi
                 onClicked: {
-                    ShanHe.saveConfig(baseEdit.text, keyEdit.text, modelEdit.text,
+                    ShanHe.saveConfig(baseEdit.text, keyEdit.text, modelCombo.editText,
                                       tempSlider.value, useApiSwitch.checked ? "api" : "mock")
                     sheet.saved()
                     sheet.close()

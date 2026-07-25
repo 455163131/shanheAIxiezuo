@@ -14,8 +14,6 @@ Control {
     property int minValue: 2000
     property int maxValue: 2500
 
-    signal minValueChanged(int value)
-    signal maxValueChanged(int value)
 
     background: Rectangle {
         color: Theme.panel
@@ -38,7 +36,6 @@ Control {
                 onValueModified: {
                     root.minValue = value
                     if (root.minValue > root.maxValue) root.maxValue = value
-                    root.minValueChanged(value)
                 }
             }
         }
@@ -55,7 +52,6 @@ Control {
                 onValueModified: {
                     root.maxValue = value
                     if (root.maxValue < root.minValue) root.minValue = value
-                    root.maxValueChanged(value)
                 }
             }
         }

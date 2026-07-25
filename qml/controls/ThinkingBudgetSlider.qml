@@ -14,7 +14,6 @@ Control {
     property int value: 2
     property bool autoMode: true
 
-    signal valueChanged()
 
     readonly property var labels: ["轻度", "中度", "高度", "极高", "最高"]
     readonly property var budgets: [1600, 3200, 4800, 6400, 8192]
@@ -36,7 +35,7 @@ Control {
             Item { width: Theme.sp2 }
             Switch {
                 checked: root.autoMode
-                onToggled: { root.autoMode = checked; root.valueChanged() }
+                onToggled: { root.autoMode = checked }
             }
             Text { text: root.autoMode ? "自动" : "手动"; color: Theme.sub; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
         }
@@ -50,7 +49,6 @@ Control {
             onValueChanged: {
                 if (pressed) {
                     root.value = value
-                    root.valueChanged()
                 }
             }
         }

@@ -102,6 +102,7 @@ qt_add_qml_module(ShanHeWriter
         qml/controls/SettingArea.qml
         qml/controls/ConfirmRow.qml
         qml/controls/SideNav.qml
+        qml/controls/ThemeSwitcher.qml
         qml/controls/ThinkingBudgetSlider.qml
         qml/controls/WordCountRange.qml
         qml/controls/StreamOutput.qml

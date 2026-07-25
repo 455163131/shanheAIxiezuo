@@ -101,7 +101,6 @@ Control {
             visible: root.scanning
             Layout.fillWidth: true
             spacing: Theme.sp2
-            leftPadding: Theme.sp3
             BusyIndicator { running: root.scanning; implicitWidth: 16; implicitHeight: 16 }
             Text {
                 text: "正在扫描一致性…"

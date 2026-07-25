@@ -26,11 +26,11 @@ Popup {
     property string rightText: ""
     property string leftLabel: "主线"
     property string rightLabel: "分支"
-    property qlonglong branchId: -1
+    property var branchId: -1
 
-    signal acceptBranch(qlonglong branchId, string text)
-    signal abandonBranch(qlonglong branchId)
-    signal mergeBranch(qlonglong branchId, string text)
+    signal acceptBranch(var branchId, string text)
+    signal abandonBranch(var branchId)
+    signal mergeBranch(var branchId, string text)
     signal regenerateBranch()
     signal openBranchList()
 

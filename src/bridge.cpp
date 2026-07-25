@@ -16,6 +16,10 @@
 #include <QSettings>
 #include <QMetaType>
 #include <QVariant>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QUrl>
 
 namespace {
 // 密钥存储策略：
@@ -84,6 +88,9 @@ ShanHeBridge::ShanHeBridge(QObject *parent)
             this, [this](const QString &id, bool ok, const QString &reason) {
         Q_EMIT agentWorkflowCompleted(id, ok, reason);
     });
+
+    // 模型列表获取用的独立 NAM
+    m_fetchNam = new QNetworkAccessManager(this);
 
     loadConfig();
 }
@@ -348,6 +355,70 @@ void ShanHeBridge::testConnection()
 
     m_httpClient->complete(payload, [this](bool ok, const QString &msg) {
         Q_EMIT testResult(ok, msg);
+    });
+}
+
+// ---------------- 获取上游模型列表 ----------------
+void ShanHeBridge::fetchModels()
+{
+    if (m_apiBase.trimmed().isEmpty()) {
+        Q_EMIT fetchModelsError(QStringLiteral("请先填写 API 地址"));
+        return;
+    }
+
+    // 构造 URL：{apiBase}/models，兼容末尾有无斜杠
+    QString base = m_apiBase.trimmed();
+    if (base.endsWith(QLatin1Char('/')))
+        base.chop(1);
+    const QUrl url(base + QStringLiteral("/models"));
+
+    QNetworkRequest req(url);
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    if (!m_apiKey.trimmed().isEmpty())
+        req.setRawHeader("Authorization",
+                         QStringLiteral("Bearer %1").arg(m_apiKey.trimmed()).toUtf8());
+
+    QNetworkReply *reply = m_fetchNam->get(req);
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        reply->deleteLater();
+        const int httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray body = reply->readAll();
+
+        if (reply->error() != QNetworkReply::NoError) {
+            // 网络层错误（DNS / 超时 / TLS 等）
+            Q_EMIT fetchModelsError(
+                QStringLiteral("网络请求失败：%1").arg(reply->errorString()));
+            return;
+        }
+        if (httpCode != 200) {
+            Q_EMIT fetchModelsError(
+                QStringLiteral("上游返回 HTTP %1：%2")
+                    .arg(httpCode)
+                    .arg(QString::fromUtf8(body.left(500))));
+            return;
+        }
+
+        // 解析 JSON：OpenAI 兼容格式 { "data": [ { "id": "xxx" }, ... ] }
+        const QJsonDocument doc = QJsonDocument::fromJson(body);
+        if (!doc.isObject()) {
+            Q_EMIT fetchModelsError(QStringLiteral("响应格式错误：非 JSON 对象"));
+            return;
+        }
+        const QJsonArray data = doc.object().value(QStringLiteral("data")).toArray();
+        if (data.isEmpty()) {
+            Q_EMIT fetchModelsError(QStringLiteral("上游未返回任何模型"));
+            return;
+        }
+
+        QStringList models;
+        models.reserve(data.size());
+        for (const QJsonValue &v : data) {
+            const QString id = v.toObject().value(QStringLiteral("id")).toString();
+            if (!id.isEmpty())
+                models.append(id);
+        }
+        models.sort(Qt::CaseInsensitive);
+        Q_EMIT modelsFetched(models);
     });
 }
 

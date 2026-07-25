@@ -1,4 +1,4 @@
-﻿import QtQuick 2.15
+import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import ShanHe 1.0
@@ -30,7 +30,6 @@ Control {
         Row {
             width: parent.width
             spacing: Theme.sp2
-            padding: Theme.sp3
 
             Text {
                 text: root.title + " (" + root.selectedIds.length + ")"
@@ -51,8 +50,6 @@ Control {
             visible: !root.collapsed
             width: parent.width
             spacing: Theme.sp2
-            padding: Theme.sp3
-            padding.top: 0
 
             TextField {
                 id: searchField

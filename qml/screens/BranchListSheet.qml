@@ -1,4 +1,4 @@
-﻿import QtQuick 2.15
+import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import ShanHe 1.0
@@ -24,11 +24,11 @@ Popup {
     ]
 
     signal createBranch()
-    signal compareBranch(qlonglong id)
-    signal mergeBranch(qlonglong id)
-    signal abandonBranch(qlonglong id)
-    signal reactivateBranch(qlonglong id)
-    signal deleteBranch(qlonglong id)
+    signal compareBranch(var id)
+    signal mergeBranch(var id)
+    signal abandonBranch(var id)
+    signal reactivateBranch(var id)
+    signal deleteBranch(var id)
 
     function statusColor(s) {
         if (s === "active") return Theme.success

@@ -6,18 +6,18 @@ Item {
     id: root
     width: 6
     implicitWidth: 6
-    cursorShape: Qt.SplitHCursor
-    activeFocusOnTab: true
-    Accessible.name: "分隔条"
-    Accessible.description: "拖拽调整面板宽度"
-    Accessible.role: Accessible.Splitter
 
     property alias target: handle.target
     property alias direction: handle.direction
     property int minSize: 180
     property int maxSize: 640
 
+    // 拖拽过程中持续发出（w = 目标当前宽度）；松手时发一次 dragFinished 用于持久化。
+    signal dragChanged(real w)
+    signal dragFinished(real w)
+
     Rectangle {
+        id: bar
         anchors.fill: parent
         color: Theme.line
         opacity: 0
@@ -28,8 +28,9 @@ Item {
         id: handle
         anchors.fill: parent
         hoverEnabled: true
-        onEntered: parent.opacity = 1
-        onExited: parent.opacity = 0
+        cursorShape: Qt.SplitHCursor
+        onEntered: bar.opacity = 1
+        onExited: bar.opacity = 0
 
         property real startX: 0
         property real startWidth: 0
@@ -49,6 +50,11 @@ Item {
             } else {
                 target.width = Math.max(minSize, Math.min(maxSize, startWidth - delta))
             }
+            root.dragChanged(target.width)
+        }
+
+        onReleased: (mouse) => {
+            if (target) root.dragFinished(target.width)
         }
     }
 }

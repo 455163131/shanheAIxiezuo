@@ -195,6 +195,7 @@ Item {
                             }
 
                             Label {
+                                id: nameLbl
                                 text: modelData.name
                                 color: modelData.key === currentCategory ? Theme.primary : Theme.body
                                 font.family: Theme.fontFamily
@@ -216,7 +217,6 @@ Item {
                                 font.pixelSize: Theme.tSm
                                 font.bold: true
                                 anchors.verticalCenter: parent.verticalCenter
-                                anchors.right: parent.right
                             }
                         }
 

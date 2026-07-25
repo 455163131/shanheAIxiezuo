@@ -13,9 +13,7 @@ Control {
     property int lastCount: 3
     property var selectedIds: []
     property bool collapsed: false
-    property bool enabled: true
 
-    signal modeChanged(string mode)
     signal selectionChanged()
 
     readonly property var modes: [
@@ -39,7 +37,6 @@ Control {
         Row {
             width: parent.width
             spacing: Theme.sp2
-            padding: Theme.sp3
 
             Switch {
                 checked: root.enabled
@@ -64,8 +61,6 @@ Control {
             visible: !root.collapsed
             width: parent.width
             spacing: Theme.sp2
-            padding: Theme.sp3
-            padding.top: 0
 
             Row {
                 spacing: Theme.sp2
@@ -77,7 +72,6 @@ Control {
                     currentIndex: Math.max(0, root.modes.findIndex(function(m) { return m.value === root.mode }))
                     onActivated: {
                         root.mode = model.value
-                        root.modeChanged(root.mode)
                     }
                 }
             }
@@ -87,7 +81,7 @@ Control {
                 from: 500; to: 20000; stepSize: 500
                 value: root.lastNValue
                 editable: true
-                prefix: "字数: "
+                textFromValue: function(value) { return "字数: " + value }
                 onValueModified: { root.lastNValue = value; root.selectionChanged() }
             }
 
@@ -95,7 +89,7 @@ Control {
                 visible: root.mode === "lastChapters"
                 from: 1; to: 20
                 value: root.lastCount
-                prefix: "章数: "
+                textFromValue: function(value) { return "章数: " + value }
                 onValueModified: { root.lastCount = value; root.selectionChanged() }
             }
 

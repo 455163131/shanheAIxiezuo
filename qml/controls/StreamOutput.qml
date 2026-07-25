@@ -14,8 +14,6 @@ ScrollView {
     property bool generating: false
     property string thinkingPhase: ""
 
-    signal textChanged()
-    signal generatingChanged()
 
     clip: true
 

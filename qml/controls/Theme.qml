@@ -161,6 +161,16 @@ QtObject {
     readonly property color nudgeFg: p.nudgeFg
     readonly property color nudgeBg: p.nudgeBg
 
+    // ---- 参考 App 语义 token（对齐 themes.css，补全 v5 Studio / ThemeSwitcher 引用）----
+    // 全部由当前激活调色板 p 派生，保证三皮肤 × 明暗 均存在，AOT 编译安全。
+    readonly property int headerHeight: 52
+    readonly property color headerBg: p.panel
+    readonly property color editorBg: p.bg2
+    readonly property color itemBg: p.surface
+    readonly property color itemHover: p.surfaceHover
+    readonly property color chipBorder: p.primary
+    readonly property color popover: p.panel
+
     readonly property string fontFamily: p.fontFamily
     readonly property string fontMono: p.fontMono
     readonly property int editorFontSize: p.editorFontSize

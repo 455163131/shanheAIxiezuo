@@ -27,6 +27,7 @@ Item {
     SettingsSheet { }
     Library { }
     SideNav { }
+    ThemeSwitcher { }
     ThinkingBudgetSlider { }
     WordCountRange { }
     StreamOutput { }

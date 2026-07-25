@@ -16,6 +16,8 @@ class HttpLlmClient;
 class MockLlmClient;
 class ProjectStore;
 class AgentOrchestrator;
+class QNetworkAccessManager;
+class QNetworkReply;
 
 /**
  * 山河AI写作 · C++ 内核桥接（QML 暴露的全局对象 "ShanHe"）
@@ -92,6 +94,10 @@ public:
     /// 测试连通性：结果通过 testResult 信号返回
     Q_INVOKABLE void testConnection();
 
+    /// 从上游 API 获取可用模型列表（GET {apiBase}/models），
+    /// 结果通过 modelsFetched 信号返回；失败通过 fetchModelsError 信号返回
+    Q_INVOKABLE void fetchModels();
+
     /// 触发一次章节生成（按当前配置路由到真实 API 或 mock）
     Q_INVOKABLE void generate(bool reduceAI, const QString &persona,
                               const QString &promptText);
@@ -149,6 +155,11 @@ signals:
     void error(QString msg);
     void testResult(bool ok, QString msg);
 
+    /// 模型列表获取成功（上游 /v1/models 返回的 model id 列表）
+    void modelsFetched(const QStringList &models);
+    /// 模型列表获取失败
+    void fetchModelsError(const QString &msg);
+
     /// TLS/HTTPS 自检未通过（Task 3 预留，本任务不实装）
     void tlsMissing();
 
@@ -191,6 +202,9 @@ private:
 
     // 多 Agent 编排器（bridge 拥有，聚合关系）
     AgentOrchestrator *m_orchestrator = nullptr;
+
+    // 模型列表获取（独立 NAM，不复用 httpClient 的）
+    QNetworkAccessManager *m_fetchNam = nullptr;
 
     void loadConfig();
     QString buildSystemPrompt(const QString &persona, bool reduceAI) const;
