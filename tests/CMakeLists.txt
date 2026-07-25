@@ -17,6 +17,7 @@ qt_add_executable(shanhe_tests
     ../src/leakguard.cpp
     ../src/llmparams.cpp
     ../src/promptassembler.cpp
+    ../src/configio.cpp
 )
 
 # Allow #include "bridge.h" / "sseparser.h" / "illmclient.h" etc. (all in src/)

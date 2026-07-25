@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network Test)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network Sql Test)
 
 qt_standard_project_setup(REQUIRES 6.5)
 
@@ -38,6 +38,8 @@ qt_add_executable(ShanHeWriter
     src/llmparams.cpp
     src/promptassembler.h
     src/promptassembler.cpp
+    src/configio.h
+    src/configio.cpp
 )
 
 # ---- 流派数据（QML/C++ 共用，编译进资源）----
@@ -101,6 +103,7 @@ target_link_libraries(ShanHeWriter PRIVATE
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Network
+    Qt6::Sql
 )
 
 # ---- 单元测试（Qt Test）----

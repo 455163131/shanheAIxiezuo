@@ -5,6 +5,10 @@
 #include <QDir>
 #include <QSettings>
 #include <QSslSocket>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QDateTime>
 
 #include "sseparser.h"
 #include "book.h"
@@ -19,6 +23,7 @@
 #include "promptassembler.h"
 #include "leakguard.h"
 #include "textutils.h"
+#include "configio.h"
 
 class ShanHeTests : public QObject
 {
@@ -39,6 +44,7 @@ private slots:
     void mockLlmClient_generateWithControlBasicRound();
     void book_chapterSerializationRoundtrip();
     void book_bookPrefsRoundtrip();
+    void configIo_exportImportRoundtrip();
 };
 
 void ShanHeTests::sseParser_singleLine()
@@ -470,6 +476,49 @@ void ShanHeTests::book_bookPrefsRoundtrip()
     QCOMPARE(book2.m_prefs["thinkingAuto"].toBool(), true);
     QCOMPARE(book2.m_prefs["recentMode"].toString(), QStringLiteral("lastN"));
     QCOMPARE(book2.m_prefs["recentValue"].toInt(), 2000);
+}
+
+
+void ShanHeTests::configIo_exportImportRoundtrip()
+{
+    QSettings s("ShanHe", "ShanHeWriter");
+    s.setValue("api/base", "https://api.example.com/v1");
+    s.setValue("api/model", "gpt-4o");
+    s.setValue("api/backend", "api");
+    s.setValue("ui/skin", "novel");
+    s.setValue("ui/dark", true);
+    s.setValue("gen/creativityIndex", 3);
+    s.setValue("gen/wordCountMin", 2000);
+    s.setValue("gen/wordCountMax", 2500);
+
+    QString tmpPath = QDir::tempPath() + "/shanhe_config_test.json";
+    QFile::remove(tmpPath);
+
+    bool exportOk = ConfigIo::exportConfig(tmpPath);
+    QVERIFY(exportOk);
+
+    QFile file(tmpPath);
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    QVERIFY(doc.isObject());
+    QJsonObject obj = doc.object();
+    QVERIFY(obj.contains("settings"));
+    QJsonObject settings = obj["settings"].toObject();
+    QVERIFY(!settings.contains("api/key"));
+    QCOMPARE(settings["api/base"].toString(), QStringLiteral("https://api.example.com/v1"));
+    QCOMPARE(settings["ui/skin"].toString(), QStringLiteral("novel"));
+
+    s.clear();
+    bool importOk = ConfigIo::importConfig(tmpPath);
+    QVERIFY(importOk);
+    QCOMPARE(s.value("api/base").toString(), QStringLiteral("https://api.example.com/v1"));
+    QCOMPARE(s.value("api/model").toString(), QStringLiteral("gpt-4o"));
+    QCOMPARE(s.value("ui/skin").toString(), QStringLiteral("novel"));
+    QCOMPARE(s.value("gen/creativityIndex").toInt(), 3);
+    QVERIFY(s.value("api/key").isNull());
+
+    s.clear();
+    QFile::remove(tmpPath);
 }
 
 QTEST_GUILESS_MAIN(ShanHeTests)
