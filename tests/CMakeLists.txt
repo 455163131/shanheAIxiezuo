@@ -1,4 +1,4 @@
-# Unit test targets: shanhe_tests
+﻿# Unit test targets: shanhe_tests
 # Reuses app source files (sseparser / bridge / httpllmclient / mockllmclient),
 # does not link the ShanHeWriter executable (avoids main() symbol clash).
 
@@ -17,7 +17,7 @@ qt_add_executable(shanhe_tests
     ../src/leakguard.cpp
     ../src/llmparams.cpp
     ../src/promptassembler.cpp
-    ../src/configio.cpp
+    ../src/historystore.cpp
 )
 
 # Allow #include "bridge.h" / "sseparser.h" / "illmclient.h" etc. (all in src/)
@@ -29,6 +29,7 @@ target_link_libraries(shanhe_tests PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Network
+    Qt6::Sql
     Qt6::Test
 )
 
@@ -93,3 +94,18 @@ target_link_libraries(test_promptassembler PRIVATE
     Qt6::Test
 )
 add_test(NAME test_promptassembler COMMAND test_promptassembler)
+
+# ---- HistoryStore SQLite + JSON fallback tests (Task 17) ----
+qt_add_executable(test_historystore
+    test_historystore.cpp
+    ../src/historystore.cpp
+)
+target_include_directories(test_historystore PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+target_link_libraries(test_historystore PRIVATE
+    Qt6::Core
+    Qt6::Sql
+    Qt6::Test
+)
+add_test(NAME test_historystore COMMAND test_historystore)

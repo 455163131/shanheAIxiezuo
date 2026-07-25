@@ -40,6 +40,8 @@ qt_add_executable(ShanHeWriter
     src/promptassembler.cpp
     src/configio.h
     src/configio.cpp
+    src/entitystore.h
+    src/entitystore.cpp
 )
 
 # ---- 流派数据（QML/C++ 共用，编译进资源）----
