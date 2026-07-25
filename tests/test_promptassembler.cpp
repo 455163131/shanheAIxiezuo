@@ -8,6 +8,11 @@ private slots:
     void sixSegmentOrder();
     void emptyEntityPlaceholder();
     void wordLineAppearsTwice();
+    void loadRecentChapters_lastN_tailCut();
+    void loadRecentChapters_lastChapters_slidingWindow();
+    void loadRecentChapters_manual_selected();
+    void loadRecentChapters_none_empty();
+    void promptForDisplay_stripsProtection();
 };
 
 // Helper: build a fully-populated input so all six segments have content.
@@ -121,6 +126,81 @@ void TestPromptAssembler::wordLineAppearsTwice()
     int pSecond = prompt.indexOf(wordLine, pFirst + wordLine.length());
     QVERIFY(pFirst > pReq && pFirst < pRem);
     QVERIFY(pSecond > pRem);
+}
+
+void TestPromptAssembler::loadRecentChapters_lastN_tailCut()
+{
+    QVector<PromptAssembler::ChapterRef> allChapters = {
+        {QStringLiteral("第1章"), QStringLiteral("第一章正文内容很长很长很长很长很长很长很长很长很长"), QString(), true},
+        {QStringLiteral("第2章"), QStringLiteral("第二章正文内容很长很长很长很长很长很长很长很长很长"), QString(), true},
+        {QStringLiteral("第3章"), QStringLiteral("第三章正文内容"), QString(), true},
+    };
+
+    auto recent = PromptAssembler::loadRecentChapters(allChapters, QStringLiteral("lastN"), 20, 2);
+    QVERIFY(recent.size() <= 2);
+    if (recent.size() >= 1) {
+        QVERIFY(recent.last().title == QStringLiteral("第3章"));
+    }
+}
+
+void TestPromptAssembler::loadRecentChapters_lastChapters_slidingWindow()
+{
+    QVector<PromptAssembler::ChapterRef> allChapters = {
+        {QStringLiteral("第1章"), QStringLiteral("第一章正文"), QStringLiteral("第一章摘要"), true},
+        {QStringLiteral("第2章"), QStringLiteral("第二章正文"), QStringLiteral("第二章摘要"), true},
+        {QStringLiteral("第3章"), QStringLiteral("第三章正文"), QStringLiteral("第三章摘要"), true},
+    };
+
+    auto recent = PromptAssembler::loadRecentChapters(allChapters, QStringLiteral("lastChapters"), 0, 1);
+    QVERIFY(recent.size() >= 1);
+    QVERIFY(recent.last().hasContent);
+    QVERIFY(!recent.last().content.isEmpty());
+    for (int i = 0; i < recent.size() - 1; ++i) {
+        QVERIFY(!recent[i].hasContent || recent[i].content.isEmpty());
+    }
+}
+
+void TestPromptAssembler::loadRecentChapters_manual_selected()
+{
+    QVector<PromptAssembler::ChapterRef> allChapters = {
+        {QStringLiteral("第1章"), QStringLiteral("正文1"), QString(), true},
+        {QStringLiteral("第2章"), QStringLiteral("正文2"), QString(), true},
+        {QStringLiteral("第3章"), QStringLiteral("正文3"), QString(), true},
+    };
+
+    QVector<int> manualIds = {0, 2};
+    auto recent = PromptAssembler::loadRecentChapters(allChapters, QStringLiteral("manual"), 0, 0, manualIds);
+    QCOMPARE(recent.size(), 2);
+    QCOMPARE(recent[0].title, QStringLiteral("第1章"));
+    QCOMPARE(recent[1].title, QStringLiteral("第3章"));
+}
+
+void TestPromptAssembler::loadRecentChapters_none_empty()
+{
+    QVector<PromptAssembler::ChapterRef> allChapters = {
+        {QStringLiteral("第1章"), QStringLiteral("正文1"), QString(), true},
+    };
+
+    auto recent = PromptAssembler::loadRecentChapters(allChapters, QStringLiteral("none"), 0, 0);
+    QVERIFY(recent.isEmpty());
+}
+
+void TestPromptAssembler::promptForDisplay_stripsProtection()
+{
+    PromptAssembler::AssembleInput input;
+    input.storyBackground = QStringLiteral("测试背景");
+    input.wordCountMin = 1000;
+    input.wordCountMax = 1500;
+    input.emptyPolicy = QStringLiteral("placeholder");
+
+    auto result = PromptAssembler::assemble(input);
+    QString display = PromptAssembler::promptForDisplay(result.prompt);
+
+    QVERIFY(!display.contains(QStringLiteral("【素材声明】")));
+    QVERIFY(!display.contains(QStringLiteral("硬性规则")));
+    QVERIFY(!display.contains(QStringLiteral("【补充约束")));
+    QVERIFY(display.contains(QStringLiteral("测试背景")));
+    QVERIFY(display.contains(QStringLiteral("1000")));
 }
 
 QTEST_GUILESS_MAIN(TestPromptAssembler)

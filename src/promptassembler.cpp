@@ -243,6 +243,87 @@ QStringList buildReferenceBlocks(const AssembleInput &input)
     return blocks;
 }
 
+QVector<ChapterRef> loadRecentChapters(
+    const QVector<ChapterRef> &allChapters,
+    const QString &mode,
+    int recentValue,
+    int lastChaptersCount,
+    const QVector<int> &manualIds)
+{
+    QVector<ChapterRef> result;
+
+    if (mode == QStringLiteral("none") || allChapters.isEmpty()) return result;
+
+    if (mode == QStringLiteral("manual")) {
+        for (int idx : manualIds) {
+            if (idx >= 0 && idx < allChapters.size()) result.append(allChapters[idx]);
+        }
+        return result;
+    }
+
+    if (mode == QStringLiteral("lastChapters")) {
+        int n = qMax(1, lastChaptersCount);
+        int total = allChapters.size();
+        int splitPoint = qMax(0, total - n);
+        for (int i = 0; i < total; ++i) {
+            ChapterRef ch = allChapters[i];
+            if (i < splitPoint) {
+                ch.hasContent = false;
+                ch.content.clear();
+            }
+            result.append(ch);
+        }
+        return result;
+    }
+
+    if (mode == QStringLiteral("lastN")) {
+        int budget = recentValue;
+        if (budget <= 0) return result;
+        QVector<ChapterRef> reversed;
+        int accumulated = 0;
+        for (int i = allChapters.size() - 1; i >= 0; --i) {
+            const ChapterRef &ch = allChapters[i];
+            int words = TextUtils::countWords(ch.content);
+            if (accumulated + words > budget && !reversed.isEmpty()) break;
+            reversed.append(ch);
+            accumulated += words;
+        }
+        for (int i = reversed.size() - 1; i >= 0; --i) result.append(reversed[i]);
+        return result;
+    }
+
+    return result;
+}
+
+AssembleResult assemble(const AssembleInput &input,
+                        const QString &styleTemplate,
+                        const QString &requirementTemplate)
+{
+    AssembleResult result;
+    result.prompt = assemblePrompt(input, styleTemplate, requirementTemplate);
+    return result;
+}
+
+QString promptForDisplay(const QString &prompt)
+{
+    QString result = prompt;
+    // Strip the banner segment (first segment, contains the protection marker).
+    int bannerIdx = result.indexOf(QStringLiteral("【素材声明】"));
+    if (bannerIdx >= 0) {
+        int segEnd = result.indexOf(QStringLiteral("\n\n"), bannerIdx);
+        if (segEnd >= 0) {
+            result.remove(bannerIdx, segEnd - bannerIdx + 2);
+        } else {
+            result.remove(bannerIdx, result.length() - bannerIdx);
+        }
+    }
+    // Defensively strip other protection markers that may appear in system
+    // or closing fragments.
+    result.remove(QStringLiteral("硬性规则"));
+    result.remove(QStringLiteral("【补充约束"));
+    return result;
+}
+
 QString assemblePrompt(const AssembleInput &input,
                        const QString &styleTemplate,
                        const QString &requirementTemplate)

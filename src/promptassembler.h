@@ -11,6 +11,8 @@ namespace PromptAssembler {
 struct ChapterRef {
     QString title;
     QString content;
+    QString summary;
+    bool hasContent = true;
 };
 
 struct CharacterRef {
@@ -49,6 +51,13 @@ struct AssembleInput {
     QVector<ChapterRef> recentChapters;
     int wordCountMin = 2000;
     int wordCountMax = 2500;
+    QString emptyPolicy;  // "placeholder" (default) or "skip"
+};
+
+// Result of assemble(): carries the full prompt string (with protection)
+// so callers can pipe it through promptForDisplay() for UI preview.
+struct AssembleResult {
+    QString prompt;
 };
 
 // Sanitized word-count range: clamp to [100, 20000], hi < lo -> hi = lo.
@@ -86,6 +95,20 @@ QString formatRequirement(const QString &styleTemplate, const QString &requireme
 // (【素材声明】 / 补充约束) that LeakGuard looks for.
 QString loadPromptFile(const QString &qrcPath, const QString &fallback);
 
+// Load recent chapters according to a 4-mode policy:
+//   none         -> empty list (no prior context)
+//   manual       -> only chapters whose indices are in manualIds
+//   lastChapters -> sliding window: keep full content for the last N
+//                   chapters, clear content (keep title+summary) for the rest
+//   lastN        -> tail cut by word budget: accumulate from the last chapter
+//                   backwards until the word budget is exhausted
+QVector<ChapterRef> loadRecentChapters(
+    const QVector<ChapterRef> &allChapters,
+    const QString &mode,
+    int recentValue,
+    int lastChaptersCount = 2,
+    const QVector<int> &manualIds = {});
+
 // Assemble the full 6-segment prompt (assembler.js:211-231):
 //   1. MATERIAL_BANNER      (content/prompts/banner.txt)
 //   2. recentBlock          "这是前文的章节内容：\n<recent>"
@@ -105,5 +128,16 @@ QString assemblePrompt(const AssembleInput &input,
 QString assemblePromptForDisplay(const AssembleInput &input,
                                  const QString &styleTemplate = QString(),
                                  const QString &requirementTemplate = QString());
+
+// Assemble and return a result struct (carries .prompt). Wrapper around
+// assemblePrompt so callers can chain with promptForDisplay.
+AssembleResult assemble(const AssembleInput &input,
+                        const QString &styleTemplate = QString(),
+                        const QString &requirementTemplate = QString());
+
+// Strip protection / anti-leakage markers (banner, system rules, closing
+// constraints) from an already-assembled prompt so it is safe to show in
+// the UI preview pane.
+QString promptForDisplay(const QString &prompt);
 
 } // namespace PromptAssembler
