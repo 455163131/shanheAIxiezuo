@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.21)
 project(ShanHeWriter VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -44,6 +44,12 @@ qt_add_executable(ShanHeWriter
     src/entitystore.cpp
     src/historystore.h
     src/historystore.cpp
+    src/parallelworldstore.h
+    src/parallelworldstore.cpp
+    src/ragstore.h
+    src/ragstore.cpp
+    src/consistencychecker.h
+    src/consistencychecker.cpp
 )
 
 # ---- 流派数据（QML/C++ 共用，编译进资源）----
@@ -78,6 +84,7 @@ qt_add_qml_module(ShanHeWriter
         qml/screens/NewBookSheet.qml
         qml/screens/Studio.qml
         qml/screens/CompareView.qml
+        qml/screens/BranchListSheet.qml
         qml/screens/SettingsSheet.qml
         qml/screens/Library.qml
         qml/controls/Theme.qml
