@@ -37,4 +37,5 @@ Item {
     PromptCardPicker { }
     RecentChaptersPicker { }
     ConsistencyReport { }
+    AgentWorkflowPanel { }
 }

@@ -15,6 +15,7 @@
 class HttpLlmClient;
 class MockLlmClient;
 class ProjectStore;
+class AgentOrchestrator;
 
 /**
  * 山河AI写作 · C++ 内核桥接（QML 暴露的全局对象 "ShanHe"）
@@ -23,6 +24,7 @@ class ProjectStore;
  *  - 流派数据加载与提示词编排（领域逻辑）
  *  - 配置持久化（QSettings）
  *  - 作为编排者，把 LLM 调用委派给注入的 ILlmClient（真实 / 演示 / 测试替身）
+ *  - 多 Agent 工作流编排（聚合 AgentOrchestrator，转发给 QML）
  *
  * 网络、SSE 解析、mock 流式等传输细节已下沉到 ILlmClient 的实现中，
  * 因此本类首次具备独立单测能力。QML 暴露的接口（属性 / Q_INVOKABLE）
@@ -97,6 +99,30 @@ public:
     /// 中断当前生成
     Q_INVOKABLE void stopGeneration();
 
+    // ====== 多 Agent 工作流（转发到 AgentOrchestrator） ======
+    /// 启动一次多 Agent 工作流（设定→大纲→写作→审校，全自动批量）。
+    /// config 字段：autoSetting/autoOutline/autoWrite/autoReview(bool),
+    ///             chaptersPerBatch/maxRetries(int),
+    ///             stopOnReviewFail(bool),
+    ///             mockReviewAlwaysFail(bool,测试用)/mockChapterCount(int,测试用)
+    /// 返回 workflowId（异步执行，通过 agentTaskStarted/agentTaskCompleted/agentWorkflowCompleted 跟踪）。
+    Q_INVOKABLE QString startAgentWorkflow(const QString &novelId, const QVariantMap &config);
+
+    /// 查询工作流当前任务列表（[{role,roleLabel,title,chapterId,status,statusLabel,result,error,attempt}]）
+    Q_INVOKABLE QVariantList getAgentWorkflowStatus(const QString &workflowId) const;
+
+    /// 计算工作流进度百分比 0-100
+    Q_INVOKABLE int getAgentWorkflowProgress(const QString &workflowId) const;
+
+    /// 工作流是否已结束
+    Q_INVOKABLE bool isAgentWorkflowFinished(const QString &workflowId) const;
+
+    /// 中断工作流
+    Q_INVOKABLE void abortAgentWorkflow(const QString &workflowId);
+
+    /// 直接访问 orchestrator（测试用）
+    AgentOrchestrator *orchestrator() const { return m_orchestrator; }
+
     /// 依赖注入入口：测试或外部装配时注入 ILlmClient 替身（bridge 不拥有其生命周期）
     void setLlmClient(ILlmClient *client);
 
@@ -131,6 +157,14 @@ signals:
     /// 一本书已就绪（创建或打开后），带完整书籍对象，供 QML 进入创作台
     void bookOpened(const QVariantMap &book);
 
+    // ====== 多 Agent 工作流信号（透传 AgentOrchestrator） ======
+    /// 某个 Agent 任务开始执行
+    void agentTaskStarted(const QString &workflowId, const QVariantMap &task);
+    /// 某个 Agent 任务执行完成（成功或失败均触发）
+    void agentTaskCompleted(const QString &workflowId, const QVariantMap &task);
+    /// 整个工作流完成。success=true 全部成功；false 中断或失败
+    void agentWorkflowCompleted(const QString &workflowId, bool success, const QString &reason);
+
 private:
     QJsonArray m_genres;
 
@@ -154,6 +188,9 @@ private:
 
     // 书籍持久化层（P2：解决「重启即丢」）
     ProjectStore *m_store = nullptr;
+
+    // 多 Agent 编排器（bridge 拥有，聚合关系）
+    AgentOrchestrator *m_orchestrator = nullptr;
 
     void loadConfig();
     QString buildSystemPrompt(const QString &persona, bool reduceAI) const;

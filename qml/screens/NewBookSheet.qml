@@ -43,6 +43,7 @@ Popup {
     property bool generating: false
     property string genBuffer: ""
     property bool writeFirstChapter: true
+    property bool autoMode: false
     property var outlineChapters: []
     property int dragIndex: -1
 
@@ -71,6 +72,7 @@ Popup {
         generating = false
         genBuffer = ""
         writeFirstChapter = true
+        autoMode = false
         outlineChapters = []
         dragIndex = -1
         const groups = safeGroups()
@@ -732,6 +734,61 @@ Popup {
                     ConfirmRow { k: "大纲"; v: sheet.outlineText ? (sheet.outlineText.split("\n").filter(function(s){return s.trim()}).length + " 章") : "未生成" }
                     Rectangle { Layout.fillWidth: true; height: 1; color: Theme.lineSoft }
                     Label { text: "进入后将先看到定稿大纲，可逐章展开写正文。"; color: Theme.sub; font.family: Theme.fontFamily; font.pixelSize: Theme.tXs; wrapMode: Text.Wrap }
+                    // 全自动批量生成开关：开启后创作台会展示「批量生成」按钮，
+                    // 点击即触发多 Agent 工作流（设定→大纲→写作→审校）。
+                    Rectangle {
+                        Layout.fillWidth: true
+                        radius: Theme.radiusSm
+                        color: sheet.autoMode ? Theme.primaryA : Theme.surface2
+                        border.color: sheet.autoMode ? Theme.primary : Theme.line
+                        border.width: 1
+                        implicitHeight: 56
+                        Behavior on color { ColorAnimation { duration: Theme.durFast } }
+                        Behavior on border.color { ColorAnimation { duration: Theme.durFast } }
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: Theme.sp3
+                            anchors.rightMargin: Theme.sp3
+                            spacing: Theme.sp3
+                            Icon { name: "sparkles"; color: sheet.autoMode ? Theme.primaryHi : Theme.sub; size: 18 }
+                            ColumnLayout {
+                                spacing: 0
+                                Label {
+                                    text: "全自动批量生成模式"
+                                    color: sheet.autoMode ? Theme.primaryHi : Theme.ink
+                                    font.family: Theme.fontFamily
+                                    font.bold: true
+                                    font.pixelSize: Theme.tMd
+                                }
+                                Label {
+                                    text: "进入创作台后，一键运行 设定→大纲→写作→审校 全流程"
+                                    color: sheet.autoMode ? Theme.primaryHi : Theme.sub
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.tXs
+                                }
+                            }
+                            Item { Layout.fillWidth: true }
+                            CheckBox {
+                                id: autoModeChk
+                                checked: sheet.autoMode
+                                onToggled: sheet.autoMode = checked
+                                indicator: Rectangle {
+                                    width: 22; height: 22; radius: 4
+                                    color: autoModeChk.checked ? Theme.primary : "transparent"
+                                    border.color: autoModeChk.checked ? Theme.primary : Theme.line
+                                    border.width: 1
+                                    Label {
+                                        anchors.centerIn: parent
+                                        text: "✓"
+                                        color: Theme.bg
+                                        font.pixelSize: 14
+                                        font.bold: true
+                                        visible: autoModeChk.checked
+                                    }
+                                }
+                            }
+                        }
+                    }
                     Rectangle {
                         Layout.fillWidth: true
                         radius: Theme.radiusSm
@@ -816,7 +873,8 @@ Popup {
                             characters: sheet.characters,
                             timeline: sheet.timeline,
                             outlineText: sheet.outlineText,
-                            writeFirstChapter: sheet.writeFirstChapter
+                            writeFirstChapter: sheet.writeFirstChapter,
+                            autoMode: sheet.autoMode
                         })
                         sheet.close()
                     }

@@ -315,6 +315,13 @@ Item {
                 }
 
                 RippleButton {
+                    text: "批量生成"
+                    accent: Theme.primaryHi
+                    visible: !settings.focusMode && book && book.autoMode === true
+                    onClicked: root.startAgentWorkflow()
+                }
+
+                RippleButton {
                     text: settings.focusMode ? "退出专注" : "专注"
                     ghost: true
                     onClicked: settings.focusMode = !settings.focusMode
@@ -1014,6 +1021,41 @@ Item {
     }
 
     SettingsSheet { id: studioSettings; onSaved: toast.show("API 配置已保存") }
+
+    // 多 Agent 工作流面板（设定→大纲→写作→审校，全自动批量生成）
+    AgentWorkflowPanel {
+        id: agentWorkflowPanel
+        parent: Overlay.overlay
+        onWorkflowFinished: function(success, reason) {
+            if (success) {
+                toast.show("✓ 多 Agent 工作流全部完成")
+            } else {
+                toast.show("⚠ 工作流结束：" + (reason || "失败"))
+            }
+        }
+    }
+
+    // 启动多 Agent 工作流的便捷入口（供「批量生成」按钮及其他调用方使用）
+    function startAgentWorkflow() {
+        if (!book || !book.id) {
+            toast.show("请先打开一本书")
+            return
+        }
+        agentWorkflowPanel.open()
+        // 默认配置：4 个 Agent 全开，每批写 3 章，最多重试 2 次，审校失败不停止
+        agentWorkflowPanel.startWorkflow(book.id, {
+            autoSetting: true,
+            autoOutline: true,
+            autoWrite: true,
+            autoReview: true,
+            chaptersPerBatch: 3,
+            maxRetries: 2,
+            stopOnReviewFail: false,
+            // mock 钩子：测试用，正式接入 LLM 后移除
+            mockReviewAlwaysFail: false,
+            mockChapterCount: 6
+        })
+    }
 
     // 阅读舒适度弹窗
     Popup {

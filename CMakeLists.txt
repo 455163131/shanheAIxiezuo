@@ -50,6 +50,8 @@ qt_add_executable(ShanHeWriter
     src/ragstore.cpp
     src/consistencychecker.h
     src/consistencychecker.cpp
+    src/agentorchestrator.h
+    src/agentorchestrator.cpp
 )
 
 # ---- 流派数据（QML/C++ 共用，编译进资源）----
@@ -111,6 +113,7 @@ qt_add_qml_module(ShanHeWriter
         qml/controls/ImportSmoke.qml
         qml/controls/RecentChaptersPicker.qml
         qml/controls/ConsistencyReport.qml
+        qml/controls/AgentWorkflowPanel.qml
 )
 
 set_target_properties(ShanHeWriter PROPERTIES

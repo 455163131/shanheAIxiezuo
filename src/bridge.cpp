@@ -6,6 +6,7 @@
 #include "personas.h"
 #include "windowscredentialstore.h"
 #include "consistencychecker.h"
+#include "agentorchestrator.h"
 
 #include <QDebug>
 #include <QFile>
@@ -67,6 +68,22 @@ ShanHeBridge::ShanHeBridge(QObject *parent)
 
     // 书籍持久化层
     m_store = new ProjectStore(this);
+
+    // 多 Agent 编排器（异步工作流：设定→大纲→写作→审校）
+    m_orchestrator = new AgentOrchestrator(this);
+    // 透传 orchestrator 信号给 QML
+    connect(m_orchestrator, &AgentOrchestrator::taskStarted,
+            this, [this](const QString &id, const QVariantMap &t) {
+        Q_EMIT agentTaskStarted(id, t);
+    });
+    connect(m_orchestrator, &AgentOrchestrator::taskCompleted,
+            this, [this](const QString &id, const QVariantMap &t) {
+        Q_EMIT agentTaskCompleted(id, t);
+    });
+    connect(m_orchestrator, &AgentOrchestrator::workflowCompleted,
+            this, [this](const QString &id, bool ok, const QString &reason) {
+        Q_EMIT agentWorkflowCompleted(id, ok, reason);
+    });
 
     loadConfig();
 }
@@ -425,4 +442,36 @@ QVariantList ShanHeBridge::checkConsistency(const QString &chapterText,
         result.append(m);
     }
     return result;
+}
+
+// ---------------- 多 Agent 工作流（转发到 AgentOrchestrator） ----------------
+QString ShanHeBridge::startAgentWorkflow(const QString &novelId, const QVariantMap &config)
+{
+    if (!m_orchestrator) return QString();
+    const auto cfg = AgentOrchestrator::configFromMap(config);
+    return m_orchestrator->startWorkflow(novelId, cfg);
+}
+
+QVariantList ShanHeBridge::getAgentWorkflowStatus(const QString &workflowId) const
+{
+    if (!m_orchestrator) return QVariantList();
+    const auto tasks = m_orchestrator->getWorkflowStatus(workflowId);
+    return AgentOrchestrator::tasksToVariantList(tasks);
+}
+
+int ShanHeBridge::getAgentWorkflowProgress(const QString &workflowId) const
+{
+    if (!m_orchestrator) return 0;
+    return m_orchestrator->getWorkflowProgress(workflowId);
+}
+
+bool ShanHeBridge::isAgentWorkflowFinished(const QString &workflowId) const
+{
+    if (!m_orchestrator) return false;
+    return m_orchestrator->isWorkflowFinished(workflowId);
+}
+
+void ShanHeBridge::abortAgentWorkflow(const QString &workflowId)
+{
+    if (m_orchestrator) m_orchestrator->abortWorkflow(workflowId);
 }

@@ -22,6 +22,7 @@ qt_add_executable(shanhe_tests
     ../src/historystore.cpp
     ../src/parallelworldstore.cpp
     ../src/configio.cpp
+    ../src/agentorchestrator.cpp
 )
 
 # Allow #include "bridge.h" / "sseparser.h" / "illmclient.h" etc. (all in src/)
@@ -89,12 +90,14 @@ qt_add_executable(test_promptassembler
     ../src/promptassembler.cpp
     ../src/textutils.cpp
     ../src/leakguard.cpp
+    ../src/ragstore.cpp
 )
 target_include_directories(test_promptassembler PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src
 )
 target_link_libraries(test_promptassembler PRIVATE
     Qt6::Core
+    Qt6::Sql
     Qt6::Test
 )
 add_test(NAME test_promptassembler COMMAND test_promptassembler)
@@ -176,3 +179,18 @@ target_link_libraries(test_consistencychecker PRIVATE
     Qt6::Test
 )
 add_test(NAME test_consistencychecker COMMAND test_consistencychecker)
+
+# ---- AgentOrchestrator multi-Agent workflow tests ----
+# 覆盖：startWorkflow 异步返回 / 全流程执行 / 进度 / 中断 / 重试 / 跳过 / config 解析 / 序列化
+qt_add_executable(test_agentorchestrator
+    test_agentorchestrator.cpp
+    ../src/agentorchestrator.cpp
+)
+target_include_directories(test_agentorchestrator PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+target_link_libraries(test_agentorchestrator PRIVATE
+    Qt6::Core
+    Qt6::Test
+)
+add_test(NAME test_agentorchestrator COMMAND test_agentorchestrator)
