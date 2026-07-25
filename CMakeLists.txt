@@ -42,6 +42,8 @@ qt_add_executable(ShanHeWriter
     src/configio.cpp
     src/entitystore.h
     src/entitystore.cpp
+    src/historystore.h
+    src/historystore.cpp
 )
 
 # ---- 流派数据（QML/C++ 共用，编译进资源）----
