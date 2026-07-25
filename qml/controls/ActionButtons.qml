@@ -7,7 +7,7 @@ Row {
     id: root
     spacing: Theme.sp2
     Accessible.name: "操作按钮组"
-    Accessible.description: "生成内容后的操作按钮，包括复制、插入、替换、新章、重生"
+    Accessible.description: "生成内容后的操作按钮，包括审校、复制、插入、替换、新章、重生"
     Accessible.role: Accessible.PageTabList
 
     property bool enabledAll: true
@@ -17,6 +17,26 @@ Row {
     signal replaceClicked()
     signal newChapterClicked()
     signal regenerateClicked()
+    signal consistencyCheckRequested()
+
+    Button {
+        text: "审校"
+        font.pixelSize: 12
+        enabled: root.enabledAll
+        onClicked: root.consistencyCheckRequested()
+        background: Rectangle {
+            color: Theme.info
+            radius: Theme.radiusSm
+            opacity: enabled ? 1 : 0.5
+        }
+        contentItem: Text {
+            text: parent.text
+            color: "#ffffff"
+            font: parent.font
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
 
     Button {
         text: "复制"

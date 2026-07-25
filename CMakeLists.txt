@@ -110,6 +110,7 @@ qt_add_qml_module(ShanHeWriter
         qml/controls/PromptCardPicker.qml
         qml/controls/ImportSmoke.qml
         qml/controls/RecentChaptersPicker.qml
+        qml/controls/ConsistencyReport.qml
 )
 
 set_target_properties(ShanHeWriter PROPERTIES

@@ -965,6 +965,7 @@ Item {
                         ActionButtons {
                             Layout.fillWidth: true
                             enabledAll: !root.generating
+                            onConsistencyCheckRequested: root.runConsistencyCheck()
                         }
 
                         // 生成按钮
@@ -977,6 +978,19 @@ Item {
                         }
 
                         Item { Layout.fillWidth: true; Layout.fillHeight: true }
+                    }
+                }
+
+                // 一致性审校结果面板：覆盖在右栏内容之上，
+                // 点击「审校」按钮后由 runConsistencyCheck() 设 visible=true。
+                // 关闭（点 ✕）后让右栏内容重新可见。
+                ConsistencyReport {
+                    id: consistencyReport
+                    anchors.fill: parent
+                    visible: false
+                    onRescanRequested: root.runConsistencyCheck()
+                    onIssueClicked: function(issue) {
+                        toast.show(issue.title + " · " + issue.severity)
                     }
                 }
             }
@@ -1066,5 +1080,56 @@ Item {
                        "\n当前要写的章节：" + cur +
                        "\n目标：推进剧情并落一处爽点。"
         ShanHe.generate(root.reduceAI, root.persona, prompt)
+    }
+
+    // ── 一致性审校 ──
+    // 取当前章节正文 + 前一章正文（如有） + 右栏已选实体（mock），
+    // 调 bridge.checkConsistency（纯规则、同步返回），把结果交给 ConsistencyReport。
+    function runConsistencyCheck() {
+        // 同步保存当前编辑区到 chapters model，避免扫到旧文本
+        if (chapList.currentIndex >= 0 && chapList.currentIndex < chapters.count)
+            chapters.setProperty(chapList.currentIndex, "content", editor.text)
+
+        const curIdx = chapList.currentIndex
+        const chapterText = (curIdx >= 0 && curIdx < chapters.count)
+            ? (chapters.get(curIdx).content || "")
+            : editor.text
+        const chapterId = (curIdx >= 0 && curIdx < chapters.count)
+            ? chapters.get(curIdx).t
+            : ""
+        // 前文：取上一章正文（首章或未选章节时为空）
+        let previousText = ""
+        if (curIdx > 0 && curIdx < chapters.count)
+            previousText = chapters.get(curIdx - 1).content || ""
+
+        consistencyReport.issues = []
+        consistencyReport.scanning = true
+        consistencyReport.visible = true
+
+        // 用 Timer 让 BusyIndicator 先渲染一帧再执行同步扫描，
+        // 避免 UI 在扫描期间被冻结看不到「正在扫描」提示。
+        consistencyScanTimer.chapterText = chapterText
+        consistencyScanTimer.chapterId = chapterId
+        consistencyScanTimer.previousText = previousText
+        consistencyScanTimer.start()
+    }
+
+    function performConsistencyScan(chapterText, chapterId, previousText) {
+        const issues = ShanHe.checkConsistency(
+            chapterText, chapterId, previousText,
+            root.mockCharacters, root.mockTerms,
+            root.mockKnowledge, root.mockOutlines)
+        consistencyReport.issues = issues
+        consistencyReport.scanning = false
+    }
+
+    // 延迟一帧执行同步扫描，让 BusyIndicator 先渲染
+    Timer {
+        id: consistencyScanTimer
+        interval: 60
+        property string chapterText: ""
+        property string chapterId: ""
+        property string previousText: ""
+        onTriggered: root.performConsistencyScan(chapterText, chapterId, previousText)
     }
 }

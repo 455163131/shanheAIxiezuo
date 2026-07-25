@@ -5,6 +5,7 @@
 #include "projectstore.h"
 #include "personas.h"
 #include "windowscredentialstore.h"
+#include "consistencychecker.h"
 
 #include <QDebug>
 #include <QFile>
@@ -361,4 +362,67 @@ void ShanHeBridge::saveBook(const QVariantMap &book)
 {
     if (m_store)
         m_store->saveBook(book);
+}
+
+// ---------------- 一致性审校 ----------------
+// QML 传入的 QVariantList 元素是 QVariantMap，字段约定与 EntityRef 对齐：
+//   {id, name, content, summary?, gender?, type?}
+// 上层（Studio.qml）从 mockCharacters/mockTerms/mockKnowledge/mockOutlines 构造。
+// 这里把 QVariantList 转 QVector<EntityRef>，调 ConsistencyChecker::checkAll，
+// 再把 ConsistencyIssue 列表回填成 QVariantMap 给 QML。
+QVariantList ShanHeBridge::checkConsistency(const QString &chapterText,
+                                            const QString &chapterId,
+                                            const QString &previousText,
+                                            const QVariantList &characters,
+                                            const QVariantList &terms,
+                                            const QVariantList &knowledge,
+                                            const QVariantList &outlines)
+{
+    ConsistencyInput input;
+    input.chapterText  = chapterText;
+    input.chapterId    = chapterId;
+    input.previousText = previousText;
+
+    // 把 QVariantList 转 QVector<EntityRef>；缺字段安全降级（空字符串）
+    auto toEntities = [](const QVariantList &src, const QString &defaultType) {
+        QVector<EntityRef> out;
+        out.reserve(src.size());
+        for (const QVariant &v : src) {
+            const QVariantMap m = v.toMap();
+            EntityRef e;
+            e.id      = m.value(QStringLiteral("id")).toString();
+            e.name    = m.value(QStringLiteral("name")).toString();
+            e.content = m.value(QStringLiteral("content")).toString();
+            e.summary = m.value(QStringLiteral("summary")).toString();
+            e.gender  = m.value(QStringLiteral("gender")).toString();
+            e.type    = m.value(QStringLiteral("type")).toString();
+            if (e.type.isEmpty())
+                e.type = defaultType;
+            out.append(e);
+        }
+        return out;
+    };
+
+    input.characters = toEntities(characters, QStringLiteral("character"));
+    input.terms      = toEntities(terms,      QStringLiteral("term"));
+    input.knowledge  = toEntities(knowledge,  QStringLiteral("knowledge"));
+    input.outlines   = toEntities(outlines,   QStringLiteral("outline"));
+
+    ConsistencyChecker checker;
+    const QList<ConsistencyIssue> issues = checker.checkAll(input);
+
+    QVariantList result;
+    result.reserve(issues.size());
+    for (const ConsistencyIssue &issue : issues) {
+        QVariantMap m;
+        m[QStringLiteral("type")]       = issue.type;
+        m[QStringLiteral("severity")]   = issue.severity;
+        m[QStringLiteral("title")]      = issue.title;
+        m[QStringLiteral("detail")]     = issue.detail;
+        m[QStringLiteral("suggestion")] = issue.suggestion;
+        m[QStringLiteral("location")]   = issue.location;
+        m[QStringLiteral("evidence")]   = issue.evidence;
+        result.append(m);
+    }
+    return result;
 }

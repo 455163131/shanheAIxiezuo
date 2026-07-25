@@ -55,6 +55,17 @@ public:
     Q_INVOKABLE void openBook(const QString &id);
     Q_INVOKABLE void saveBook(const QVariantMap &book);
 
+    /// 一致性审校：把章节正文 + 设定实体传入 ConsistencyChecker，
+    /// 返回 ConsistencyIssue 列表（[{type,severity,title,detail,suggestion,location,evidence}]）。
+    /// 纯规则、不调 LLM，可离线运行；QML 可直接同步调用。
+    Q_INVOKABLE QVariantList checkConsistency(const QString &chapterText,
+                                              const QString &chapterId,
+                                              const QString &previousText,
+                                              const QVariantList &characters,
+                                              const QVariantList &terms,
+                                              const QVariantList &knowledge,
+                                              const QVariantList &outlines);
+
     QString apiBase() const { return m_apiBase; }
     QString apiKey() const { return m_apiKey; }
     QString model() const { return m_model; }

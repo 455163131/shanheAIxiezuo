@@ -7,6 +7,7 @@ qt_add_executable(shanhe_tests
     fakellmclient.h
     ../src/sseparser.cpp
     ../src/bridge.cpp
+    ../src/consistencychecker.cpp
     ../src/httpllmclient.cpp
     ../src/mockllmclient.cpp
     ../src/projectstore.cpp
@@ -17,6 +18,7 @@ qt_add_executable(shanhe_tests
     ../src/leakguard.cpp
     ../src/llmparams.cpp
     ../src/promptassembler.cpp
+    ../src/ragstore.cpp
     ../src/historystore.cpp
     ../src/parallelworldstore.cpp
     ../src/configio.cpp

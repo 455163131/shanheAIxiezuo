@@ -1,4 +1,4 @@
-﻿import QtQuick 2.15
+import QtQuick 2.15
 import ShanHe 1.0
 
 // 类型冒烟校验（type smoke test）。
@@ -23,6 +23,7 @@ Item {
     NewBookSheet { }
     Studio { }
     CompareView { }
+    BranchListSheet { }
     SettingsSheet { }
     Library { }
     SideNav { }
@@ -35,4 +36,5 @@ Item {
     EntityPicker { }
     PromptCardPicker { }
     RecentChaptersPicker { }
+    ConsistencyReport { }
 }
