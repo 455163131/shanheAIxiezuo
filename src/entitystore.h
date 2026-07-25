@@ -57,10 +57,28 @@ public:
     static void updateGlobalTemplate(int id, const QVariantMap &tmplData);
     static void deleteGlobalTemplate(int id);
     static void seedTemplatesIfEmpty();
+    static QVariantMap templateById(int id);
 
     // Global knowledge (isGlobal=true cards)
     static QVariantList globalKnowledgeCards();
     static void addGlobalKnowledge(const QVariantMap &cardData);
+
+    // Chapter meta
+    QVariantMap chapterMeta(int chapterNumber) const;
+    void setChapterMeta(int chapterNumber, const QVariantMap &meta);
+
+    // Linked entities query
+    QVariantList linkedCharacters(int chapterNumber) const;
+    QVariantList linkedTerms(int chapterNumber) const;
+    QVariantList linkedKnowledge(int chapterNumber) const;
+    QVariantList linkedMemos(int chapterNumber) const;
+    QVariantList linkedOutlines(int chapterNumber) const;
+
+    // Chapter for prompt assembly
+    QVariantMap chapterForPrompt(int chapterNumber) const;
+
+    // Chapter inheritance
+    QVariantMap inheritedAiConfig(int fromChapterNumber) const;
 
 private:
     QString m_bookDir;
@@ -75,4 +93,6 @@ private:
     void saveJsonWithFolders(const QString &filename, const QVariantList &items, const QVariantList &folders) const;
     static QVariantList loadGlobalJsonList(const QString &path, const QString &key);
     static void saveGlobalJsonList(const QString &path, const QString &key, const QVariantList &items);
+    static QString chapterFileName(int chapterNumber);
+    QVariantList linkedEntities(int chapterNumber, const QString &linkKey, const QVariantList &allEntities) const;
 };

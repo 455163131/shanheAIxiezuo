@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QFileInfo>
+#include <QTextStream>
 
 namespace {
 constexpr int SCHEMA_VERSION = 1;
@@ -531,6 +532,17 @@ void EntityStore::seedTemplatesIfEmpty()
     setGlobalTemplates(templates);
 }
 
+QVariantMap EntityStore::templateById(int id)
+{
+    const QVariantList items = globalTemplates();
+    for (const QVariant &v : items) {
+        const QVariantMap m = v.toMap();
+        if (m.value(QStringLiteral("id")).toInt() == id)
+            return m;
+    }
+    return QVariantMap();
+}
+
 // ---- Global Knowledge ----
 
 QVariantList EntityStore::globalKnowledgeCards()
@@ -544,4 +556,129 @@ void EntityStore::addGlobalKnowledge(const QVariantMap &cardData)
     QVariantMap m = cardData;
     items.append(m);
     saveGlobalJsonList(globalKnowledgePath(), QStringLiteral("items"), items);
+}
+
+// ---- Chapter Meta ----
+
+QString EntityStore::chapterFileName(int chapterNumber)
+{
+    if (chapterNumber < 100)
+        return QStringLiteral("ch%1").arg(chapterNumber, 2, 10, QLatin1Char('0'));
+    return QStringLiteral("ch%1").arg(chapterNumber);
+}
+
+QVariantMap EntityStore::chapterMeta(int chapterNumber) const
+{
+    const QString chaptersDir = m_bookDir + QStringLiteral("/chapters");
+    const QString fileName = chapterFileName(chapterNumber) + QStringLiteral(".meta.json");
+    const QString path = chaptersDir + QLatin1Char('/') + fileName;
+    const QVariant v = readJsonFile(path);
+    if (v.type() != QVariant::Map)
+        return QVariantMap();
+    return v.toMap();
+}
+
+void EntityStore::setChapterMeta(int chapterNumber, const QVariantMap &meta)
+{
+    const QString chaptersDir = m_bookDir + QStringLiteral("/chapters");
+    QDir().mkpath(chaptersDir);
+    const QString fileName = chapterFileName(chapterNumber) + QStringLiteral(".meta.json");
+    const QString path = chaptersDir + QLatin1Char('/') + fileName;
+
+    QVariantMap existing = chapterMeta(chapterNumber);
+    for (auto it = meta.begin(); it != meta.end(); ++it) {
+        existing[it.key()] = it.value();
+    }
+    writeJsonFile(path, existing);
+}
+
+QVariantList EntityStore::linkedEntities(int chapterNumber, const QString &linkKey, const QVariantList &allEntities) const
+{
+    const QVariantMap meta = chapterMeta(chapterNumber);
+    const QVariantList ids = meta.value(linkKey).toList();
+
+    QVariantList result;
+    for (const QVariant &idVar : ids) {
+        const int id = idVar.toInt();
+        for (const QVariant &entity : allEntities) {
+            const QVariantMap m = entity.toMap();
+            if (m.value(QStringLiteral("id")).toInt() == id) {
+                result.append(m);
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+QVariantList EntityStore::linkedCharacters(int chapterNumber) const
+{
+    return linkedEntities(chapterNumber, QStringLiteral("linkedCharacters"), characters());
+}
+
+QVariantList EntityStore::linkedTerms(int chapterNumber) const
+{
+    return linkedEntities(chapterNumber, QStringLiteral("linkedTerms"), terms());
+}
+
+QVariantList EntityStore::linkedKnowledge(int chapterNumber) const
+{
+    return linkedEntities(chapterNumber, QStringLiteral("linkedKnowledge"), knowledgeCards());
+}
+
+QVariantList EntityStore::linkedMemos(int chapterNumber) const
+{
+    return linkedEntities(chapterNumber, QStringLiteral("linkedMemos"), memos());
+}
+
+QVariantList EntityStore::linkedOutlines(int chapterNumber) const
+{
+    return linkedEntities(chapterNumber, QStringLiteral("linkedOutlines"), outlines());
+}
+
+// ---- Chapter for Prompt ----
+
+QVariantMap EntityStore::chapterForPrompt(int chapterNumber) const
+{
+    QVariantMap result;
+
+    const QVariantMap meta = chapterMeta(chapterNumber);
+    result[QStringLiteral("title")] = meta.value(QStringLiteral("title")).toString();
+    result[QStringLiteral("summary")] = meta.value(QStringLiteral("summary")).toString();
+
+    const QString chaptersDir = m_bookDir + QStringLiteral("/chapters");
+    const QString fileName = chapterFileName(chapterNumber) + QStringLiteral(".txt");
+    const QString contentPath = chaptersDir + QLatin1Char('/') + fileName;
+
+    QFile f(contentPath);
+    bool hasContent = false;
+    QString content;
+    if (f.open(QIODevice::ReadOnly)) {
+        QTextStream in(&f);
+        content = in.readAll();
+        hasContent = !content.isEmpty();
+    }
+
+    result[QStringLiteral("content")] = content;
+    result[QStringLiteral("hasContent")] = hasContent;
+
+    return result;
+}
+
+// ---- Chapter Inheritance ----
+
+QVariantMap EntityStore::inheritedAiConfig(int fromChapterNumber) const
+{
+    if (fromChapterNumber <= 0)
+        return QVariantMap();
+
+    const QVariantMap meta = chapterMeta(fromChapterNumber);
+    const QVariantMap aiConfig = meta.value(QStringLiteral("aiConfig")).toMap();
+    if (aiConfig.isEmpty())
+        return QVariantMap();
+
+    QVariantMap result = aiConfig;
+    result.remove(QStringLiteral("chapterPlot"));
+    result.remove(QStringLiteral("styleTemplateId"));
+    return result;
 }

@@ -16,6 +16,11 @@ private slots:
     void emptyDirCreatesFiles();
     void persistenceRoundtrip();
     void seedTemplates();
+    void chapterMeta_crud();
+    void chapterMeta_linkedEntitiesQuery();
+    void loadChapterForPrompt();
+    void templateQueryById();
+    void newChapterInheritsPrevious();
 };
 
 void TestEntityStore::characters_crud()
@@ -359,6 +364,284 @@ void TestEntityStore::seedTemplates()
     QCOMPARE(EntityStore::globalTemplates().size(), 5);
 
     EntityStore::setGlobalTemplates(original);
+}
+
+void TestEntityStore::chapterMeta_crud()
+{
+    QTemporaryDir tempDir;
+    EntityStore store(tempDir.path());
+
+    QVariantMap meta = store.chapterMeta(1);
+    QVERIFY(meta.isEmpty());
+
+    QVariantMap aiConfig;
+    aiConfig[QStringLiteral("model")] = QStringLiteral("gpt-4");
+    aiConfig[QStringLiteral("temperature")] = 0.7;
+    aiConfig[QStringLiteral("chapterPlot")] = QStringLiteral("主角遇到危机");
+    aiConfig[QStringLiteral("styleTemplateId")] = 3;
+
+    QVariantList linkedChars;
+    linkedChars.append(1);
+    linkedChars.append(2);
+
+    QVariantList linkedTerms;
+    linkedTerms.append(5);
+
+    QVariantMap m;
+    m[QStringLiteral("title")] = QStringLiteral("第一章 初入仙门");
+    m[QStringLiteral("status")] = QStringLiteral("draft");
+    m[QStringLiteral("summary")] = QStringLiteral("主角加入仙门");
+    m[QStringLiteral("summarySource")] = QStringLiteral("ai");
+    m[QStringLiteral("wordCount")] = 2000;
+    m[QStringLiteral("aiConfig")] = aiConfig;
+    m[QStringLiteral("linkedCharacters")] = linkedChars;
+    m[QStringLiteral("linkedTerms")] = linkedTerms;
+    m[QStringLiteral("linkedKnowledge")] = QVariantList();
+    m[QStringLiteral("linkedMemos")] = QVariantList();
+    m[QStringLiteral("linkedOutlines")] = QVariantList();
+    m[QStringLiteral("createdAt")] = QStringLiteral("2026-01-01T00:00:00");
+    m[QStringLiteral("updatedAt")] = QStringLiteral("2026-01-02T00:00:00");
+
+    store.setChapterMeta(1, m);
+
+    QVariantMap readBack = store.chapterMeta(1);
+    QCOMPARE(readBack.value(QStringLiteral("title")).toString(),
+             QStringLiteral("第一章 初入仙门"));
+    QCOMPARE(readBack.value(QStringLiteral("status")).toString(),
+             QStringLiteral("draft"));
+    QCOMPARE(readBack.value(QStringLiteral("summary")).toString(),
+             QStringLiteral("主角加入仙门"));
+    QCOMPARE(readBack.value(QStringLiteral("summarySource")).toString(),
+             QStringLiteral("ai"));
+    QCOMPARE(readBack.value(QStringLiteral("wordCount")).toInt(), 2000);
+    QCOMPARE(readBack.value(QStringLiteral("createdAt")).toString(),
+             QStringLiteral("2026-01-01T00:00:00"));
+    QCOMPARE(readBack.value(QStringLiteral("updatedAt")).toString(),
+             QStringLiteral("2026-01-02T00:00:00"));
+
+    QVariantMap readAiConfig = readBack.value(QStringLiteral("aiConfig")).toMap();
+    QCOMPARE(readAiConfig.value(QStringLiteral("model")).toString(),
+             QStringLiteral("gpt-4"));
+    QCOMPARE(readAiConfig.value(QStringLiteral("temperature")).toDouble(), 0.7);
+
+    QVariantList readChars = readBack.value(QStringLiteral("linkedCharacters")).toList();
+    QCOMPARE(readChars.size(), 2);
+    QCOMPARE(readChars[0].toInt(), 1);
+    QCOMPARE(readChars[1].toInt(), 2);
+
+    QVariantList readTerms = readBack.value(QStringLiteral("linkedTerms")).toList();
+    QCOMPARE(readTerms.size(), 1);
+    QCOMPARE(readTerms[0].toInt(), 5);
+
+    QVariantMap update;
+    update[QStringLiteral("status")] = QStringLiteral("completed");
+    update[QStringLiteral("wordCount")] = 3000;
+    store.setChapterMeta(1, update);
+
+    QVariantMap updated = store.chapterMeta(1);
+    QCOMPARE(updated.value(QStringLiteral("status")).toString(),
+             QStringLiteral("completed"));
+    QCOMPARE(updated.value(QStringLiteral("wordCount")).toInt(), 3000);
+    QCOMPARE(updated.value(QStringLiteral("title")).toString(),
+             QStringLiteral("第一章 初入仙门"));
+}
+
+void TestEntityStore::chapterMeta_linkedEntitiesQuery()
+{
+    QTemporaryDir tempDir;
+    EntityStore store(tempDir.path());
+
+    QVariantMap c1;
+    c1[QStringLiteral("name")] = QStringLiteral("张三");
+    c1[QStringLiteral("content")] = QStringLiteral("男主角");
+    int cid1 = store.addCharacter(c1);
+
+    QVariantMap c2;
+    c2[QStringLiteral("name")] = QStringLiteral("李四");
+    c2[QStringLiteral("content")] = QStringLiteral("女主角");
+    int cid2 = store.addCharacter(c2);
+
+    QVariantMap c3;
+    c3[QStringLiteral("name")] = QStringLiteral("王五");
+    c3[QStringLiteral("content")] = QStringLiteral("反派");
+    int cid3 = store.addCharacter(c3);
+
+    QVariantMap t1;
+    t1[QStringLiteral("name")] = QStringLiteral("灵气");
+    t1[QStringLiteral("content")] = QStringLiteral("修炼能量");
+    int tid1 = store.addTerm(t1);
+
+    QVariantMap k1;
+    k1[QStringLiteral("name")] = QStringLiteral("世界设定");
+    k1[QStringLiteral("content")] = QStringLiteral("修仙世界");
+    k1[QStringLiteral("isGlobal")] = false;
+    int kid1 = store.addKnowledgeCard(k1);
+
+    QVariantMap mem1;
+    mem1[QStringLiteral("name")] = QStringLiteral("伏笔");
+    mem1[QStringLiteral("content")] = QStringLiteral("老爷爷身份");
+    int mid1 = store.addMemo(mem1);
+
+    QVariantMap o1;
+    o1[QStringLiteral("name")] = QStringLiteral("主线");
+    o1[QStringLiteral("content")] = QStringLiteral("崛起之路");
+    o1[QStringLiteral("type")] = QStringLiteral("main");
+    int oid1 = store.addOutline(o1);
+
+    QVariantMap meta;
+    QVariantList linkedChars;
+    linkedChars.append(cid1);
+    linkedChars.append(cid3);
+    meta[QStringLiteral("linkedCharacters")] = linkedChars;
+
+    QVariantList linkedTerms;
+    linkedTerms.append(tid1);
+    meta[QStringLiteral("linkedTerms")] = linkedTerms;
+
+    QVariantList linkedKnowledge;
+    linkedKnowledge.append(kid1);
+    meta[QStringLiteral("linkedKnowledge")] = linkedKnowledge;
+
+    QVariantList linkedMemos;
+    linkedMemos.append(mid1);
+    meta[QStringLiteral("linkedMemos")] = linkedMemos;
+
+    QVariantList linkedOutlines;
+    linkedOutlines.append(oid1);
+    meta[QStringLiteral("linkedOutlines")] = linkedOutlines;
+
+    store.setChapterMeta(1, meta);
+
+    QVariantList chars = store.linkedCharacters(1);
+    QCOMPARE(chars.size(), 2);
+    QCOMPARE(chars[0].toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("张三"));
+    QCOMPARE(chars[1].toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("王五"));
+
+    QVariantList terms = store.linkedTerms(1);
+    QCOMPARE(terms.size(), 1);
+    QCOMPARE(terms[0].toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("灵气"));
+
+    QVariantList knowledge = store.linkedKnowledge(1);
+    QCOMPARE(knowledge.size(), 1);
+    QCOMPARE(knowledge[0].toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("世界设定"));
+
+    QVariantList memos = store.linkedMemos(1);
+    QCOMPARE(memos.size(), 1);
+    QCOMPARE(memos[0].toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("伏笔"));
+
+    QVariantList outlines = store.linkedOutlines(1);
+    QCOMPARE(outlines.size(), 1);
+    QCOMPARE(outlines[0].toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("主线"));
+}
+
+void TestEntityStore::loadChapterForPrompt()
+{
+    QTemporaryDir tempDir;
+    QString bookDir = tempDir.path();
+    EntityStore store(bookDir);
+
+    QVariantMap meta;
+    meta[QStringLiteral("title")] = QStringLiteral("第一章 初入仙门");
+    meta[QStringLiteral("summary")] = QStringLiteral("主角加入仙门，开始修炼");
+    store.setChapterMeta(1, meta);
+
+    QString chaptersDir = bookDir + QStringLiteral("/chapters");
+    QDir().mkpath(chaptersDir);
+    QString contentPath = chaptersDir + QStringLiteral("/ch01.txt");
+    QFile f(contentPath);
+    f.open(QIODevice::WriteOnly);
+    f.write("这是第一章的正文内容，主角来到了仙山脚下。");
+    f.close();
+
+    QVariantMap ch = store.chapterForPrompt(1);
+    QCOMPARE(ch.value(QStringLiteral("title")).toString(),
+             QStringLiteral("第一章 初入仙门"));
+    QCOMPARE(ch.value(QStringLiteral("summary")).toString(),
+             QStringLiteral("主角加入仙门，开始修炼"));
+    QCOMPARE(ch.value(QStringLiteral("content")).toString(),
+             QStringLiteral("这是第一章的正文内容，主角来到了仙山脚下。"));
+    QVERIFY(ch.value(QStringLiteral("hasContent")).toBool());
+
+    QVariantMap ch2 = store.chapterForPrompt(99);
+    QVERIFY(!ch2.value(QStringLiteral("hasContent")).toBool());
+    QVERIFY(ch2.value(QStringLiteral("content")).toString().isEmpty());
+    QVERIFY(ch2.value(QStringLiteral("title")).toString().isEmpty());
+}
+
+void TestEntityStore::templateQueryById()
+{
+    QVariantList original = EntityStore::globalTemplates();
+
+    QVariantList empty;
+    EntityStore::setGlobalTemplates(empty);
+
+    QVariantMap t1;
+    t1[QStringLiteral("name")] = QStringLiteral("保持原风");
+    t1[QStringLiteral("content")] = QStringLiteral("请保持原文风格续写");
+    t1[QStringLiteral("category")] = QStringLiteral("style");
+    int id1 = EntityStore::addGlobalTemplate(t1);
+
+    QVariantMap t2;
+    t2[QStringLiteral("name")] = QStringLiteral("续写6.0");
+    t2[QStringLiteral("content")] = QStringLiteral("续写要求模板");
+    t2[QStringLiteral("category")] = QStringLiteral("requirement");
+    int id2 = EntityStore::addGlobalTemplate(t2);
+
+    QVariantMap found1 = EntityStore::templateById(id1);
+    QCOMPARE(found1.value(QStringLiteral("name")).toString(),
+             QStringLiteral("保持原风"));
+    QCOMPARE(found1.value(QStringLiteral("category")).toString(),
+             QStringLiteral("style"));
+    QCOMPARE(found1.value(QStringLiteral("id")).toInt(), id1);
+
+    QVariantMap found2 = EntityStore::templateById(id2);
+    QCOMPARE(found2.value(QStringLiteral("name")).toString(),
+             QStringLiteral("续写6.0"));
+
+    QVariantMap notFound = EntityStore::templateById(99999);
+    QVERIFY(notFound.isEmpty());
+
+    EntityStore::setGlobalTemplates(original);
+}
+
+void TestEntityStore::newChapterInheritsPrevious()
+{
+    QTemporaryDir tempDir;
+    EntityStore store(tempDir.path());
+
+    QVariantMap aiConfig;
+    aiConfig[QStringLiteral("model")] = QStringLiteral("gpt-4");
+    aiConfig[QStringLiteral("temperature")] = 0.8;
+    aiConfig[QStringLiteral("chapterPlot")] = QStringLiteral("上一章的剧情");
+    aiConfig[QStringLiteral("styleTemplateId")] = 5;
+    aiConfig[QStringLiteral("maxTokens")] = 2000;
+
+    QVariantMap meta;
+    meta[QStringLiteral("title")] = QStringLiteral("第一章");
+    meta[QStringLiteral("aiConfig")] = aiConfig;
+    store.setChapterMeta(1, meta);
+
+    QVariantMap inherited = store.inheritedAiConfig(1);
+    QCOMPARE(inherited.value(QStringLiteral("model")).toString(),
+             QStringLiteral("gpt-4"));
+    QCOMPARE(inherited.value(QStringLiteral("temperature")).toDouble(), 0.8);
+    QCOMPARE(inherited.value(QStringLiteral("maxTokens")).toInt(), 2000);
+    QVERIFY(!inherited.contains(QStringLiteral("chapterPlot")));
+    QVERIFY(!inherited.contains(QStringLiteral("styleTemplateId")));
+
+    QVariantMap noPrev = store.inheritedAiConfig(0);
+    QVERIFY(noPrev.isEmpty());
+
+    QVariantMap emptyChapter;
+    store.setChapterMeta(3, emptyChapter);
+    QVariantMap inheritedFromEmpty = store.inheritedAiConfig(3);
+    QVERIFY(inheritedFromEmpty.isEmpty());
 }
 
 QTEST_GUILESS_MAIN(TestEntityStore)
