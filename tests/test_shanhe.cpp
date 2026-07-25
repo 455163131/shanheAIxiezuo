@@ -37,6 +37,8 @@ private slots:
     void httpLlmClient_urlNormalization();
     void mockLlmClient_abortsImmediately();
     void mockLlmClient_generateWithControlBasicRound();
+    void book_chapterSerializationRoundtrip();
+    void book_bookPrefsRoundtrip();
 };
 
 void ShanHeTests::sseParser_singleLine()
@@ -397,6 +399,77 @@ void ShanHeTests::mockLlmClient_generateWithControlBasicRound()
     QVERIFY(!fullOutput.isEmpty());
     QVERIFY(doneResult.wordCount >= 0);
     QVERIFY(!mock.isJobStreaming(QStringLiteral("test_job_1")));
+}
+
+void ShanHeTests::book_chapterSerializationRoundtrip()
+{
+    Chapter ch;
+    ch.m_title = QStringLiteral("第1章 觉醒");
+    ch.m_content = QStringLiteral("这是第一章正文。");
+    ch.m_summary = QStringLiteral("本章讲了主角觉醒系统。");
+    ch.m_summarySource = QStringLiteral("manual");
+    ch.m_sortOrder = 0;
+    ch.m_status = QStringLiteral("draft");
+    ch.m_wordCount = 10;
+    ch.m_aiConfig = QVariantMap{
+        {"apiKeyId", 1},
+        {"modelName", "deepseek-chat"},
+        {"storyBackground", "背景设定"},
+        {"chapterPlot", "细纲"},
+        {"styleTemplateId", 1},
+        {"creativityIndex", 3},
+        {"thinkingAuto", true},
+        {"thinkingIndex", 2},
+        {"wordCountMin", 2000},
+        {"wordCountMax", 2500},
+        {"recentMode", "lastN"},
+        {"recentValue", 2000},
+        {"emptyPolicy", "placeholder"},
+    };
+    ch.m_linkedCharacters = QVector<int>{1, 3, 5};
+    ch.m_linkedTerms = QVector<int>{2, 4};
+    ch.m_linkedKnowledge = QVector<int>{1};
+    ch.m_linkedMemos = QVector<int>{1, 2};
+    ch.m_linkedOutlines = QVector<int>{1};
+
+    QJsonObject obj = ch.toJson();
+    Chapter ch2 = Chapter::fromJson(obj);
+    QCOMPARE(ch2.m_title, ch.m_title);
+    QCOMPARE(ch2.m_content, ch.m_content);
+    QCOMPARE(ch2.m_summary, ch.m_summary);
+    QCOMPARE(ch2.m_summarySource, ch.m_summarySource);
+    QCOMPARE(ch2.m_wordCount, ch.m_wordCount);
+    QCOMPARE(ch2.m_aiConfig["modelName"].toString(), QStringLiteral("deepseek-chat"));
+    QCOMPARE(ch2.m_aiConfig["creativityIndex"].toInt(), 3);
+    QCOMPARE(ch2.m_linkedCharacters.size(), 3);
+    QCOMPARE(ch2.m_linkedCharacters[0], 1);
+    QCOMPARE(ch2.m_linkedTerms.size(), 2);
+    QCOMPARE(ch2.m_linkedKnowledge.size(), 1);
+    QCOMPARE(ch2.m_linkedMemos.size(), 2);
+    QCOMPARE(ch2.m_linkedOutlines.size(), 1);
+}
+
+void ShanHeTests::book_bookPrefsRoundtrip()
+{
+    Book book;
+    book.m_id = "test-id";
+    book.m_title = "测试书";
+    book.m_prefs = QVariantMap{
+        {"creativityIndex", 3},
+        {"thinkingAuto", true},
+        {"thinkingIndex", 2},
+        {"wordCountMin", 2000},
+        {"wordCountMax", 2500},
+        {"recentMode", "lastN"},
+        {"recentValue", 2000},
+    };
+
+    QJsonObject meta = book.toMetaJson();
+    Book book2 = Book::fromMetaJson(meta);
+    QCOMPARE(book2.m_prefs["creativityIndex"].toInt(), 3);
+    QCOMPARE(book2.m_prefs["thinkingAuto"].toBool(), true);
+    QCOMPARE(book2.m_prefs["recentMode"].toString(), QStringLiteral("lastN"));
+    QCOMPARE(book2.m_prefs["recentValue"].toInt(), 2000);
 }
 
 QTEST_GUILESS_MAIN(ShanHeTests)
