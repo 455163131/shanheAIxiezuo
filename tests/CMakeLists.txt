@@ -70,3 +70,20 @@ target_link_libraries(test_llmparams PRIVATE
     Qt6::Test
 )
 add_test(NAME test_llmparams COMMAND test_llmparams)
+
+
+# ---- PromptAssembler 6-segment assembly tests (Task 11) ----
+qt_add_executable(test_promptassembler
+    test_promptassembler.cpp
+    ../src/promptassembler.cpp
+    ../src/textutils.cpp
+    ../src/leakguard.cpp
+)
+target_include_directories(test_promptassembler PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+)
+target_link_libraries(test_promptassembler PRIVATE
+    Qt6::Core
+    Qt6::Test
+)
+add_test(NAME test_promptassembler COMMAND test_promptassembler)

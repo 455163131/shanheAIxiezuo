@@ -36,6 +36,8 @@ qt_add_executable(ShanHeWriter
     src/leakguard.cpp
     src/llmparams.h
     src/llmparams.cpp
+    src/promptassembler.h
+    src/promptassembler.cpp
 )
 
 # ---- 流派数据（QML/C++ 共用，编译进资源）----
@@ -43,6 +45,16 @@ qt_add_resources(ShanHeWriter "shanhe_data"
     PREFIX "/"
     FILES
         content/genres.json
+)
+
+# ---- 三段防护提示词 + 预览脱敏版（编译进资源，供 PromptAssembler 加载）----
+qt_add_resources(ShanHeWriter "prompts_data"
+    PREFIX "/"
+    FILES
+        content/prompts/system.txt
+        content/prompts/closing.txt
+        content/prompts/banner.txt
+        content/prompts/closing_for_display.txt
 )
 
 # ---- QML 模块（UI）----
