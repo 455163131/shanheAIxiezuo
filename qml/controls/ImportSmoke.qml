@@ -1,4 +1,4 @@
-import QtQuick 2.15
+﻿import QtQuick 2.15
 import ShanHe 1.0
 
 // 类型冒烟校验（type smoke test）。
@@ -32,4 +32,7 @@ Item {
     ActionButtons { }
     Splitter { }
     CreativitySlider { }
+    EntityPicker { }
+    PromptCardPicker { }
+    RecentChaptersPicker { }
 }

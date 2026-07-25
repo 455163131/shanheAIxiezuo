@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+﻿cmake_minimum_required(VERSION 3.21)
 project(ShanHeWriter VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -99,7 +99,10 @@ qt_add_qml_module(ShanHeWriter
         qml/controls/ActionButtons.qml
         qml/controls/Splitter.qml
         qml/controls/CreativitySlider.qml
+        qml/controls/EntityPicker.qml
+        qml/controls/PromptCardPicker.qml
         qml/controls/ImportSmoke.qml
+        qml/controls/RecentChaptersPicker.qml
 )
 
 set_target_properties(ShanHeWriter PROPERTIES
