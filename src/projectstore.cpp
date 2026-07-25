@@ -1,4 +1,4 @@
-#include "projectstore.h"
+﻿#include "projectstore.h"
 
 #include <QStandardPaths>
 #include <QDir>
@@ -11,13 +11,33 @@
 #include <QDebug>
 
 namespace {
-constexpr int SCHEMA_VERSION = 2;
+constexpr int SCHEMA_VERSION = 3;
 
 QString chapterBaseName(int n)
 {
     // 1 -> "ch01", 12 -> "ch12"
     return QStringLiteral("ch%1").arg(n, 2, 10, QLatin1Char('0'));
 }
+
+bool copyRecursively(const QString &src, const QString &dst)
+{
+    QDir srcDir(src);
+    if (!srcDir.exists())
+        return false;
+    QDir().mkpath(dst);
+    const QStringList files = srcDir.entryList(QDir::Files);
+    for (const QString &fn : files) {
+        if (!QFile::copy(src + QLatin1Char('/') + fn, dst + QLatin1Char('/') + fn))
+            return false;
+    }
+    const QStringList dirs = srcDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QString &dn : dirs) {
+        if (!copyRecursively(src + QLatin1Char('/') + dn, dst + QLatin1Char('/') + dn))
+            return false;
+    }
+    return true;
+}
+
 } // namespace
 
 ProjectStore::ProjectStore(QObject *parent)
@@ -216,6 +236,122 @@ QVariantMap ProjectStore::readBookDir(const QString &id) const
     return book;
 }
 
+
+// ---- v2 -> v3 migration: meta prefs, chapter meta files, entity stores ----
+bool ProjectStore::migrateV2toV3(const QString &id) const
+{
+    const QString dir = bookDir(id);
+    const QString backupDir = dir + QStringLiteral(".backup_v2");
+
+    // Step 1: Backup entire book directory
+    if (QDir(backupDir).exists())
+        QDir(backupDir).removeRecursively();
+    if (!QDir().mkpath(backupDir))
+        return false;
+
+    if (!copyRecursively(dir, backupDir)) {
+        QDir(backupDir).removeRecursively();
+        return false;
+    }
+
+    bool success = true;
+
+    try {
+        // Step 2: Upgrade meta.json: schemaVersion 2->3, add prefs defaults
+        const QString mp = metaPath(id);
+        QVariantMap meta = readJsonFile(mp).toMap();
+        meta[QStringLiteral("schemaVersion")] = 3;
+
+        QVariantMap prefs;
+        prefs[QStringLiteral("creativityIndex")] = 3;
+        prefs[QStringLiteral("thinkingAuto")] = true;
+        prefs[QStringLiteral("thinkingIndex")] = 2;
+        prefs[QStringLiteral("wordCountMin")] = 2000;
+        prefs[QStringLiteral("wordCountMax")] = 2500;
+        prefs[QStringLiteral("recentMode")] = QStringLiteral("lastN");
+        prefs[QStringLiteral("recentValue")] = 2000;
+        meta[QStringLiteral("prefs")] = prefs;
+
+        if (!writeJsonFile(mp, meta))
+            throw QString("Failed to write meta.json");
+
+        // Step 3: Generate chNN.meta.json from chaptersMeta
+        const QVariantList chaptersMeta = meta.value(QStringLiteral("chaptersMeta")).toList();
+        const QString chDir = chaptersDir(id);
+        for (int i = 0; i < chaptersMeta.size(); ++i) {
+            const int chapNum = i + 1;
+            const QString chBase = chapterBaseName(chapNum);
+            const QString chMetaPath = chDir + QLatin1Char('/') + chBase + QStringLiteral(".meta.json");
+            if (!QFile::exists(chMetaPath)) {
+                QVariantMap chMeta;
+                chMeta[QStringLiteral("title")] = chaptersMeta.at(i).toString();
+                chMeta[QStringLiteral("aiConfig")] = QVariantMap();
+                if (!writeJsonFile(chMetaPath, chMeta))
+                    throw QString("Failed to write chapter meta for ch%1").arg(chapNum);
+            }
+        }
+
+        // Step 4: Upgrade characters.json: raw -> items[0].description
+        const QString cp = charactersPath(id);
+        QVariantMap chars = readJsonFile(cp).toMap();
+        const QString rawContent = chars.value(QStringLiteral("raw")).toString();
+        QVariantList items;
+        if (!rawContent.isEmpty()) {
+            QVariantMap firstItem;
+            firstItem[QStringLiteral("id")] = 1;
+            firstItem[QStringLiteral("name")] = QStringLiteral("导入角色");
+            firstItem[QStringLiteral("description")] = rawContent;
+            items.append(firstItem);
+        }
+        chars[QStringLiteral("schemaVersion")] = 1;
+        chars[QStringLiteral("items")] = items;
+        if (!chars.contains(QStringLiteral("folders")))
+            chars[QStringLiteral("folders")] = QVariantList();
+        if (!writeJsonFile(cp, chars))
+            throw QString("Failed to write characters.json");
+
+        // Step 5: Create empty entity files
+        struct EntityFile {
+            const char *name;
+            bool hasFolders;
+        };
+        const EntityFile entities[] = {
+            { "terms.json", false },
+            { "knowledge.json", false },
+            { "memos.json", false },
+            { "outlines.json", false },
+        };
+        for (const auto &e : entities) {
+            const QString path = dir + QLatin1Char('/') + QString::fromUtf8(e.name);
+            if (!QFile::exists(path)) {
+                QVariantMap root;
+                root[QStringLiteral("schemaVersion")] = 1;
+                root[QStringLiteral("items")] = QVariantList();
+                if (e.hasFolders)
+                    root[QStringLiteral("folders")] = QVariantList();
+                if (!writeJsonFile(path, root))
+                    throw QString("Failed to write %1").arg(QString::fromUtf8(e.name));
+            }
+        }
+
+    } catch (const QString &err) {
+        qWarning() << "v2->v3 migration failed:" << err;
+        success = false;
+    }
+
+    if (success) {
+        QDir(backupDir).removeRecursively();
+    } else {
+        QDir(dir).removeRecursively();
+        QDir().mkpath(dir);
+        copyRecursively(backupDir, dir);
+        QDir(backupDir).removeRecursively();
+    }
+
+    return success;
+}
+
+
 // ---- 向后兼容：旧版单一 meta.json 自动拆出 ----
 void ProjectStore::migrateIfNeeded(const QString &id) const
 {
@@ -226,11 +362,18 @@ void ProjectStore::migrateIfNeeded(const QString &id) const
     // 旧版标志：无 schemaVersion 且含内联 chapters 数组
     const bool isLegacy = !m.contains(QStringLiteral("schemaVersion"))
                           && m.contains(QStringLiteral("chapters"));
-    if (!isLegacy)
+    if (isLegacy) {
+        // 旧版整张 map 已是完整 book 结构（worldView/characters/timeline/outlineText/chapters）
+        // 直接交给 writeBookDir 重写为新布局（章节标题经 chaptersMeta 保留）。
+        writeBookDir(id, m);
         return;
-    // 旧版整张 map 已是完整 book 结构（worldView/characters/timeline/outlineText/chapters）
-    // 直接交给 writeBookDir 重写为新布局（章节标题经 chaptersMeta 保留）。
-    writeBookDir(id, m);
+    }
+
+    // v2 -> v3 migration
+    const int schemaVersion = m.value(QStringLiteral("schemaVersion")).toInt();
+    if (schemaVersion == 2) {
+        migrateV2toV3(id);
+    }
 }
 
 bool ProjectStore::exists(const QString &id) const

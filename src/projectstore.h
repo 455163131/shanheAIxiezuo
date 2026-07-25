@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <QObject>
 #include <QString>
@@ -63,6 +63,7 @@ private:
     void writeBookDir(const QString &id, const QVariantMap &book) const;
     QVariantMap readBookDir(const QString &id) const;
     void migrateIfNeeded(const QString &id) const;
+    bool migrateV2toV3(const QString &id) const;
     void cleanupStaleChapters(const QString &id, int keepCount) const;
 
     static bool writeTextFile(const QString &path, const QString &text);

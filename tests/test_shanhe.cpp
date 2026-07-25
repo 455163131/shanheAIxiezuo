@@ -1,4 +1,4 @@
-#include <QTest>
+﻿#include <QTest>
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QFile>
@@ -44,6 +44,7 @@ private slots:
     void mockLlmClient_generateWithControlBasicRound();
     void book_chapterSerializationRoundtrip();
     void book_bookPrefsRoundtrip();
+    void projectStore_migrateV2toV3();
     void configIo_exportImportRoundtrip();
 };
 
@@ -519,6 +520,121 @@ void ShanHeTests::configIo_exportImportRoundtrip()
 
     s.clear();
     QFile::remove(tmpPath);
+}
+
+
+void ShanHeTests::projectStore_migrateV2toV3()
+{
+    // Use test mode to isolate data directory
+    QStandardPaths::setTestModeEnabled(true);
+    ProjectStore store;
+
+    // Clean up any leftover books
+    QDir(store.rootPath()).removeRecursively();
+    QDir().mkpath(store.rootPath());
+
+    // Create a v2 book directory
+    QString bookId = "test-book";
+    QString bookDir = store.bookDir(bookId);
+    QDir().mkpath(bookDir);
+    QDir().mkpath(bookDir + "/chapters");
+
+    // v2 meta.json - chaptersMeta is array of strings in v2
+    QJsonObject meta;
+    meta["schemaVersion"] = 2;
+    meta["id"] = bookId;
+    meta["title"] = "测试书";
+    QJsonArray chaptersMeta;
+    chaptersMeta.append("第1章");
+    chaptersMeta.append("第2章");
+    meta["chaptersMeta"] = chaptersMeta;
+    QFile metaFile(bookDir + "/meta.json");
+    metaFile.open(QIODevice::WriteOnly);
+    metaFile.write(QJsonDocument(meta).toJson());
+    metaFile.close();
+
+    // v2 characters.json (old raw format)
+    QJsonObject chars;
+    chars["raw"] = "主角：张三，18岁，修仙者。";
+    QFile charsFile(bookDir + "/characters.json");
+    charsFile.open(QIODevice::WriteOnly);
+    charsFile.write(QJsonDocument(chars).toJson());
+    charsFile.close();
+
+    // Helper lambda to write a text file
+    auto writeTextFile = [](const QString &path, const QString &text) {
+        QFile f(path);
+        f.open(QIODevice::WriteOnly | QIODevice::Truncate);
+        f.write(text.toUtf8());
+        f.close();
+    };
+
+    // v2 chapter text files
+    writeTextFile(bookDir + "/chapters/ch01.txt", "第一章正文。");
+    writeTextFile(bookDir + "/chapters/ch02.txt", "第二章正文。");
+
+    // Empty summaries.json
+    writeTextFile(bookDir + "/summaries.json", "{}");
+
+    // Also create required v2 files that writeBookDir normally creates
+    writeTextFile(bookDir + "/bible.md", "");
+    writeTextFile(bookDir + "/outline.json", "{\"book\":\"\"}");
+    writeTextFile(bookDir + "/template.md", "");
+
+    // Run migration (triggered by loadBook)
+    QVariantMap loadedBook = store.loadBook(bookId);
+    QVERIFY(!loadedBook.isEmpty());
+
+    // Read meta.json directly to verify schemaVersion and prefs
+    QFile metaFile2(bookDir + "/meta.json");
+    metaFile2.open(QIODevice::ReadOnly);
+    QJsonObject metaObj = QJsonDocument::fromJson(metaFile2.readAll()).object();
+    QCOMPARE(metaObj["schemaVersion"].toInt(), 3);
+    QVERIFY(metaObj.contains("prefs"));
+    QJsonObject prefs = metaObj["prefs"].toObject();
+    QCOMPARE(prefs["creativityIndex"].toInt(), 3);
+    QCOMPARE(prefs["thinkingAuto"].toBool(), true);
+    QCOMPARE(prefs["wordCountMin"].toInt(), 2000);
+    QCOMPARE(prefs["wordCountMax"].toInt(), 2500);
+    QCOMPARE(prefs["recentMode"].toString(), QStringLiteral("lastN"));
+
+    // Verify chapter meta files created
+    QVERIFY(QFile::exists(bookDir + "/chapters/ch01.meta.json"));
+    QVERIFY(QFile::exists(bookDir + "/chapters/ch02.meta.json"));
+
+    // Verify ch01.meta.json content
+    QFile ch01MetaFile(bookDir + "/chapters/ch01.meta.json");
+    ch01MetaFile.open(QIODevice::ReadOnly);
+    QJsonObject ch01Meta = QJsonDocument::fromJson(ch01MetaFile.readAll()).object();
+    QCOMPARE(ch01Meta["title"].toString(), QStringLiteral("第1章"));
+
+    // Verify characters upgraded: raw preserved + items array with the raw content
+    QFile charsFile2(bookDir + "/characters.json");
+    charsFile2.open(QIODevice::ReadOnly);
+    QJsonObject chars2 = QJsonDocument::fromJson(charsFile2.readAll()).object();
+    QCOMPARE(chars2["schemaVersion"].toInt(), 1);
+    QVERIFY(chars2.contains("items"));
+    QCOMPARE(chars2["items"].toArray().size(), 1);
+    QCOMPARE(chars2["raw"].toString(), QStringLiteral("主角：张三，18岁，修仙者。"));
+    QCOMPARE(chars2["items"].toArray()[0].toObject()["description"].toString(),
+             QStringLiteral("主角：张三，18岁，修仙者。"));
+
+    // Verify empty json files created for other entities
+    QVERIFY(QFile::exists(bookDir + "/terms.json"));
+    QVERIFY(QFile::exists(bookDir + "/knowledge.json"));
+    QVERIFY(QFile::exists(bookDir + "/memos.json"));
+    QVERIFY(QFile::exists(bookDir + "/outlines.json"));
+
+    // Verify entity files have correct schema
+    QFile termsFile(bookDir + "/terms.json");
+    termsFile.open(QIODevice::ReadOnly);
+    QJsonObject termsObj = QJsonDocument::fromJson(termsFile.readAll()).object();
+    QCOMPARE(termsObj["schemaVersion"].toInt(), 1);
+    QVERIFY(termsObj.contains("items"));
+    QCOMPARE(termsObj["items"].toArray().size(), 0);
+
+    // Clean up
+    QDir(store.rootPath()).removeRecursively();
 }
 
 QTEST_GUILESS_MAIN(ShanHeTests)
