@@ -6,6 +6,9 @@ ScrollView {
     id: root
     implicitWidth: 300
     implicitHeight: 200
+    Accessible.name: "生成内容预览"
+    Accessible.description: "显示AI流式生成的内容"
+    Accessible.role: Accessible.Document
 
     property string text: ""
     property bool generating: false
@@ -15,6 +18,13 @@ ScrollView {
     signal generatingChanged()
 
     clip: true
+
+    Timer {
+        id: scrollTimer
+        interval: 30
+        repeat: false
+        onTriggered: flick.ensureVisible()
+    }
 
     Flickable {
         id: flick
@@ -82,5 +92,5 @@ ScrollView {
         }
     }
 
-    onTextChanged: flick.ensureVisible()
+    onTextChanged: scrollTimer.restart()
 }

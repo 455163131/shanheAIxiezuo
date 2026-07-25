@@ -1,4 +1,4 @@
-﻿import QtQuick 2.15
+import QtQuick 2.15
 import QtQuick.Controls 2.15
 import ShanHe 1.0
 
@@ -6,6 +6,10 @@ Control {
     id: root
     implicitWidth: 120
     implicitHeight: 180
+    focusPolicy: Qt.TabFocus
+    Accessible.name: "创造力调节"
+    Accessible.description: "调整AI生成内容的创造力程度，从死板到离谱共6档"
+    Accessible.role: Accessible.Slider
 
     property int value: 3
     property int from: 0

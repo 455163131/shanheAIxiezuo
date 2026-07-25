@@ -6,6 +6,10 @@ Control {
     id: root
     implicitWidth: 240
     implicitHeight: 120
+    focusPolicy: Qt.TabFocus
+    Accessible.name: "推理强度调节"
+    Accessible.description: "调整AI推理预算强度，支持自动和手动模式，共5档"
+    Accessible.role: Accessible.Slider
 
     property int value: 2
     property bool autoMode: true

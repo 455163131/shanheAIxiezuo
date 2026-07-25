@@ -6,6 +6,9 @@ import ShanHe 1.0
 Row {
     id: root
     spacing: Theme.sp2
+    Accessible.name: "操作按钮组"
+    Accessible.description: "生成内容后的操作按钮，包括复制、插入、替换、新章、重生"
+    Accessible.role: Accessible.PageTabList
 
     property bool enabledAll: true
 

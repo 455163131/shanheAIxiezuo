@@ -6,6 +6,10 @@ Control {
     id: root
     implicitWidth: 240
     implicitHeight: 60
+    focusPolicy: Qt.TabFocus
+    Accessible.name: "字数范围设置"
+    Accessible.description: "设置生成内容的最少和最多字数范围"
+    Accessible.role: Accessible.GroupBox
 
     property int minValue: 2000
     property int maxValue: 2500

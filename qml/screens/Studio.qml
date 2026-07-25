@@ -353,11 +353,29 @@ Item {
                 opacity: settings.focusMode ? 0.15 : 1
                 enabled: !settings.focusMode
                 clip: true
-                Behavior on width { NumberAnimation { duration: Theme.durNormal; easing.type: Easing.OutCubic } }
+                property bool contentVisible: !settings.focusMode
+                Behavior on width { NumberAnimation { id: leftWidthAnim; duration: Theme.durNormal; easing.type: Easing.OutCubic } }
                 Behavior on opacity { NumberAnimation { duration: Theme.durNormal } }
                 onWidthChanged: if (!settings.focusMode && width > 0) root.leftPanelWidth = width
 
+                Timer {
+                    id: leftHideTimer
+                    interval: Theme.durNormal + 30
+                    onTriggered: leftPanel.contentVisible = false
+                }
+
+                Binding on contentVisible {
+                    value: true
+                    when: !settings.focusMode
+                }
+                Binding on leftHideTimer.running {
+                    value: settings.focusMode && leftPanel.contentVisible
+                    when: true
+                }
+
                 ColumnLayout {
+                    id: leftContent
+                    visible: leftPanel.contentVisible
                     anchors.fill: parent
                     anchors.margins: Theme.sp3
                     spacing: Theme.sp3
@@ -747,11 +765,29 @@ Item {
                 opacity: settings.focusMode ? 0.15 : 1
                 enabled: !settings.focusMode
                 clip: true
-                Behavior on width { NumberAnimation { duration: Theme.durNormal; easing.type: Easing.OutCubic } }
+                property bool contentVisible: !settings.focusMode
+                Behavior on width { NumberAnimation { id: rightWidthAnim; duration: Theme.durNormal; easing.type: Easing.OutCubic } }
                 Behavior on opacity { NumberAnimation { duration: Theme.durNormal } }
                 onWidthChanged: if (!settings.focusMode && width > 0) root.rightPanelWidth = width
 
+                Timer {
+                    id: rightHideTimer
+                    interval: Theme.durNormal + 30
+                    onTriggered: rightPanel.contentVisible = false
+                }
+
+                Binding on contentVisible {
+                    value: true
+                    when: !settings.focusMode
+                }
+                Binding on rightHideTimer.running {
+                    value: settings.focusMode && rightPanel.contentVisible
+                    when: true
+                }
+
                 ScrollView {
+                    id: rightScroll
+                    visible: rightPanel.contentVisible
                     anchors.fill: parent
                     clip: true
                     background: Rectangle { color: "transparent" }
