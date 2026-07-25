@@ -5,10 +5,12 @@
 #include <QJsonObject>
 
 /**
- * 单元测试替身（Test Double）：脚本化地驱动流式输出，用于验证
- * ShanHeBridge 的编排逻辑，而无需真实网络或密钥。
+ * Unit-test double: scripted streaming for verifying ShanHeBridge orchestration
+ * without real network or keys.
  *
- * 用法：设置 script 回调，在收到 streamChat 时自行调用 onChunk / onDone。
+ * Stage 2 note: generateWithControl/abortJob/isJobStreaming are stubbed because
+ * existing bridge tests only exercise streamChat. The mockLlmClient_* tests
+ * cover the generateWithControl state machine via MockLlmClient instead.
  */
 class FakeLlmClient : public ILlmClient
 {
@@ -19,7 +21,7 @@ public:
     int completeCalls = 0;
     QJsonObject lastPayload;
 
-    // 由测试注入：收到 streamChat 时调用 script(payload, onChunk, onDone)
+    // Injected script: invoked on streamChat with (payload, onChunk, onDone).
     std::function<void(const QJsonObject &,
                        std::function<void(const QString &)>,
                        std::function<void(bool, const QString &)>)> script;
@@ -53,4 +55,15 @@ public:
     {
         return streaming;
     }
+
+    // ---- Stage 2 stubs (not exercised by existing bridge tests) ----
+    void generateWithControl(const GenConfig &,
+                             const GenCallbacks &,
+                             const QString &) override
+    {
+        // No-op stub: bridge tests use streamChat, not generateWithControl.
+    }
+
+    void abortJob(const QString &) override {}
+    bool isJobStreaming(const QString &) const override { return false; }
 };

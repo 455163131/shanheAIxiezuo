@@ -1,6 +1,6 @@
-# 单元测试目标：shanhe_tests
-# 复用 app 的源文件（sseparser / bridge / httpllmclient / mockllmclient），
-# 不链接 ShanHeWriter 可执行文件，避免 main() 符号冲突。
+# Unit test targets: shanhe_tests
+# Reuses app source files (sseparser / bridge / httpllmclient / mockllmclient),
+# does not link the ShanHeWriter executable (avoids main() symbol clash).
 
 qt_add_executable(shanhe_tests
     test_shanhe.cpp
@@ -12,9 +12,14 @@ qt_add_executable(shanhe_tests
     ../src/projectstore.cpp
     ../src/personas.cpp
     ../src/windowscredentialstore.cpp
+    # Stage 2 prompt-engine sources required by Task 13 state machine:
+    ../src/textutils.cpp
+    ../src/leakguard.cpp
+    ../src/llmparams.cpp
+    ../src/promptassembler.cpp
 )
 
-# 让测试能 #include "bridge.h" / "sseparser.h" / "illmclient.h" 等（均在 src/）
+# Allow #include "bridge.h" / "sseparser.h" / "illmclient.h" etc. (all in src/)
 target_include_directories(shanhe_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../src
 )

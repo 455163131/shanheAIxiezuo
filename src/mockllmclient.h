@@ -5,11 +5,12 @@
 #include <QObject>
 #include <QTimer>
 #include <QString>
+#include <QHash>
 
 /**
- * 内置演示客户端：未配置 API 或 backend=="mock" 时使用，模拟流式输出，
- * 让全链路在无密钥情况下也能跑通。它是 ILlmClient 的一种实现，
- * 把初版写在 ShanHeBridge 里的 mock 定时器逻辑独立出来。
+ * Built-in demo client: simulates streaming when no API key is configured or
+ * backend=="mock". Stage 2 adds generateWithControl so the state-machine
+ * callback contract can be exercised without a network.
  */
 class MockLlmClient : public QObject, public ILlmClient
 {
@@ -17,6 +18,7 @@ class MockLlmClient : public QObject, public ILlmClient
 public:
     explicit MockLlmClient(QObject *parent = nullptr);
 
+    // ---- Legacy interface ----
     void streamChat(const QJsonObject &payload,
                     std::function<void(const QString &)> onChunk,
                     std::function<void(bool, const QString &)> onDone) override;
@@ -27,11 +29,32 @@ public:
     void abort() override;
     bool isStreaming() const override;
 
+    // ---- Stage 2: generateWithControl ----
+    void generateWithControl(const GenConfig &cfg, const GenCallbacks &cb,
+                             const QString &jobId = QString()) override;
+    void abortJob(const QString &jobId) override;
+    bool isJobStreaming(const QString &jobId) const override;
+
 private slots:
     void tick();
 
 private:
+    // generateWithControl per-job state (declared before tickGen so the
+    // member function signature resolves to this nested type, not an
+    // unrelated forward-declared global struct).
+    struct MockJobState {
+        QString jobId;
+        GenCallbacks callbacks;
+        GenConfig config;
+        QString full;
+        QTimer *genTimer = nullptr;
+        int pos = 0;
+        bool cancelled = false;
+    };
+
     QString buildScriptedText(const QJsonObject &payload) const;
+    QString buildGenScriptedText(const GenConfig &cfg) const;
+    void tickGen(MockJobState *job);
 
     QTimer *m_timer = nullptr;
     QString m_full;
@@ -39,4 +62,6 @@ private:
     bool m_aborted = false;
     std::function<void(const QString &)> m_onChunk;
     std::function<void(bool, const QString &)> m_onDone;
+
+    QHash<QString, MockJobState *> m_genJobs;
 };

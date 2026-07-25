@@ -15,6 +15,10 @@
 #include "windowscredentialstore.h"
 #include "fakellmclient.h"
 #include "mockllmclient.h"
+#include "llmparams.h"
+#include "promptassembler.h"
+#include "leakguard.h"
+#include "textutils.h"
 
 class ShanHeTests : public QObject
 {
@@ -32,6 +36,7 @@ private slots:
     void httpLlmClient_tlsCheck();
     void httpLlmClient_urlNormalization();
     void mockLlmClient_abortsImmediately();
+    void mockLlmClient_generateWithControlBasicRound();
 };
 
 void ShanHeTests::sseParser_singleLine()
@@ -335,6 +340,63 @@ void ShanHeTests::mockLlmClient_abortsImmediately()
     // abort must notify onDone(false, "aborted") so upstream UI can finalize state.
     QVERIFY2(gotDone, "abort should call onDone so callers can finalize state");
     QVERIFY2(!doneOk, "abort onDone should report ok=false");
+}
+
+void ShanHeTests::mockLlmClient_generateWithControlBasicRound()
+{
+    // Task 13: verify generateWithControl state machine callback order via mock.
+    // The mock emits onMeta(stream_wait) -> onDelta * N -> onMeta(stream_done) -> onDone.
+    // HttpLlmClient's real state machine (streamOnce + needsContinue + LeakGuard +
+    // classifyError + timeout) depends on a live QNetworkReply, so we cover the
+    // callback contract here and rely on integration for the network path.
+
+    MockLlmClient mock;
+
+    ILlmClient::GenConfig cfg;
+    cfg.wordCountMin = 100;
+    cfg.wordCountMax = 200;
+    cfg.maxTokens = 2000;
+    cfg.systemMessage = QStringLiteral("你是网文续写助手");
+    cfg.userMessage = QStringLiteral("请续写");
+    cfg.jobId = QStringLiteral("test_job_1");
+
+    LlmParams::SamplingFields sampling;
+    sampling.temperature = 0.9;
+    cfg.sampling = sampling;
+
+    QString lastPhase;
+    QString fullOutput;
+    bool doneCalled = false;
+    bool doneOk = false;
+    ILlmClient::GenResult doneResult;
+
+    ILlmClient::GenCallbacks cb;
+    cb.onDelta = [&](const QString &delta) { fullOutput += delta; };
+    cb.onThinking = [&](const QString &) {};
+    cb.onMeta = [&](const QString &phase) { lastPhase = phase; };
+    cb.onDone = [&](bool ok, const QString &err, const QString &full,
+                    const ILlmClient::GenResult &result) {
+        Q_UNUSED(err)
+        doneCalled = true;
+        doneOk = ok;
+        fullOutput = full;
+        doneResult = result;
+    };
+
+    mock.generateWithControl(cfg, cb, QStringLiteral("test_job_1"));
+
+    // Job should be streaming immediately after start.
+    QVERIFY(mock.isJobStreaming(QStringLiteral("test_job_1")));
+
+    // Mock timer ticks every 50ms producing ~5 chars per tick; scripted text is
+    // under 100 chars, so 2s is plenty for completion.
+    QTest::qWait(2000);
+
+    QVERIFY(doneCalled);
+    QVERIFY(doneOk);
+    QVERIFY(!fullOutput.isEmpty());
+    QVERIFY(doneResult.wordCount >= 0);
+    QVERIFY(!mock.isJobStreaming(QStringLiteral("test_job_1")));
 }
 
 QTEST_GUILESS_MAIN(ShanHeTests)

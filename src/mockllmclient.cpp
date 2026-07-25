@@ -1,14 +1,18 @@
 #include "mockllmclient.h"
 #include "personas.h"
+#include "textutils.h"
 
 #include <QJsonArray>
+#include <QDateTime>
 
 namespace {
-constexpr int MOCK_STEP_MS = 26;   // 流式打字节奏
-constexpr int MOCK_CHUNK = 4;      // 每次追加字符数
+constexpr int MOCK_STEP_MS = 26;   // legacy streamChat typing rhythm
+constexpr int MOCK_CHUNK = 4;      // legacy streamChat chunk size
+constexpr int GEN_STEP_MS = 50;    // generateWithControl tick interval
+constexpr int GEN_CHUNK = 5;       // generateWithControl chunk size
 
-// 从 system prompt 反推当前人格（mock 仅能从消息体识别；与 Personas 单一真相源对齐，
-// 不再散落「思考者/奇想版/氛围版」字面量）
+// Reverse-derive persona from system prompt (mock-only; Personas is the
+// single source of truth, no scattered "思考者/奇想版/氛围版" literals).
 QString personaFromSystem(const QString &sys)
 {
     for (const QString &k : Personas::keys())
@@ -16,7 +20,7 @@ QString personaFromSystem(const QString &sys)
             return k;
     return Personas::keys().isEmpty() ? QString() : Personas::keys().first();
 }
-}
+} // namespace
 
 MockLlmClient::MockLlmClient(QObject *parent)
     : QObject(parent)
@@ -42,7 +46,6 @@ QString MockLlmClient::buildScriptedText(const QJsonObject &payload) const
     const QString persona = personaFromSystem(sys);
     const bool reduceAI = sys.contains(QStringLiteral("降AI痕迹"));
 
-    // 人格 key 列表来自单一真相源（顺序：思考者/奇想版/氛围版）
     const QStringList ks = Personas::keys();
     const QString thinker = ks.value(0);
     const QString whimsy  = ks.value(1);
@@ -124,4 +127,99 @@ void MockLlmClient::abort()
 bool MockLlmClient::isStreaming() const
 {
     return m_timer->isActive();
+}
+
+// ===========================================================================
+// Stage 2: generateWithControl mock state machine
+// ===========================================================================
+
+void MockLlmClient::generateWithControl(const GenConfig &cfg, const GenCallbacks &cb,
+                                        const QString &jobId)
+{
+    QString id = jobId.isEmpty()
+                     ? QStringLiteral("mock_single_%1").arg(QDateTime::currentMSecsSinceEpoch())
+                     : jobId;
+
+    if (m_genJobs.contains(id)) {
+        abortJob(id);
+    }
+
+    auto *job = new MockJobState();
+    job->jobId = id;
+    job->callbacks = cb;
+    job->config = cfg;
+    job->full = buildGenScriptedText(cfg);
+    m_genJobs.insert(id, job);
+
+    if (cb.onMeta) cb.onMeta(QStringLiteral("stream_wait"));
+
+    job->genTimer = new QTimer(this);
+    job->genTimer->setSingleShot(false);
+    connect(job->genTimer, &QTimer::timeout, this, [this, job]() {
+        tickGen(job);
+    });
+    job->genTimer->start(GEN_STEP_MS);
+}
+
+void MockLlmClient::tickGen(MockJobState *job)
+{
+    if (job->cancelled) {
+        job->genTimer->stop();
+        return;
+    }
+    if (job->pos >= job->full.size()) {
+        job->genTimer->stop();
+        GenResult result;
+        result.finishReason = QStringLiteral("stop");
+        result.wordCount = TextUtils::countWords(job->full);
+        result.continueRounds = 0;
+        if (job->callbacks.onMeta)
+            job->callbacks.onMeta(QStringLiteral("stream_done"));
+        if (job->callbacks.onDone)
+            job->callbacks.onDone(true, QString(), job->full, result);
+        m_genJobs.remove(job->jobId);
+        delete job;
+        return;
+    }
+    const int step = qMin(GEN_CHUNK, job->full.size() - job->pos);
+    const QString delta = job->full.mid(job->pos, step);
+    job->pos += step;
+    if (job->callbacks.onDelta) job->callbacks.onDelta(delta);
+}
+
+void MockLlmClient::abortJob(const QString &jobId)
+{
+    auto it = m_genJobs.find(jobId);
+    if (it == m_genJobs.end()) return;
+    MockJobState *job = it.value();
+    if (job->cancelled) return;  // idempotent
+    job->cancelled = true;
+    if (job->genTimer) job->genTimer->stop();
+
+    GenResult result;
+    result.finishReason = QStringLiteral("aborted");
+    result.wordCount = TextUtils::countWords(job->full);
+    if (job->callbacks.onDone)
+        job->callbacks.onDone(false, QStringLiteral("aborted"), job->full, result);
+
+    m_genJobs.remove(jobId);
+    delete job;
+}
+
+bool MockLlmClient::isJobStreaming(const QString &jobId) const
+{
+    return m_genJobs.contains(jobId);
+}
+
+QString MockLlmClient::buildGenScriptedText(const GenConfig &cfg) const
+{
+    Q_UNUSED(cfg)
+    // Scripted mock text (~70 chars). Production would derive flavor from
+    // persona; here we keep a single stable script so the basic-round test
+    // has deterministic output.
+    return QStringLiteral(
+        "林凡踏入虚空裂缝，眼前光芒大盛。他感受到一股浩瀚的力量涌入体内，"
+        "经脉中的灵力开始疯狂运转。这是突破的征兆——筑基期，即将大成。"
+        "远处的山峦在晨曦中若隐若现，仿佛在为这一刻作证。"
+    );
 }
