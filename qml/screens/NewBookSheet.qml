@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Window 2.15
 import ShanHe 1.0
 
 // 开新书向导（引导访谈版）：
@@ -41,6 +42,9 @@ Popup {
     property string genTarget: ""
     property bool generating: false
     property string genBuffer: ""
+    property bool writeFirstChapter: true
+    property var outlineChapters: []
+    property int dragIndex: -1
 
     property var toneOptions: ["热血燃", "轻松爽文", "悬疑烧脑", "细腻治愈", "暗黑致郁", "沙雕搞笑", "权谋智斗", "甜宠"]
 
@@ -66,6 +70,9 @@ Popup {
         genTarget = ""
         generating = false
         genBuffer = ""
+        writeFirstChapter = true
+        outlineChapters = []
+        dragIndex = -1
         const groups = safeGroups()
         currentGroup = groups.length ? groups[0] : ""
         selectedGenre = null
@@ -115,6 +122,7 @@ Popup {
                 sheet.timeline = parts.timeline
             } else if (sheet.genTarget === "outline") {
                 sheet.outlineText = txt.trim()
+                sheet.outlineChapters = parseOutlineChapters(txt.trim())
             }
             sheet.genTarget = ""
             sheet.genBuffer = ""
@@ -170,6 +178,48 @@ Popup {
                        "【人物卡】：主角、关键配角、反派，含动机与关系\n" +
                        "【时间线】：主线关键事件顺序\n\n" + buildBasePrompt()
         ShanHe.generate(false, ShanHe.personas[0], prompt)
+    }
+    function parseOutlineChapters(text) {
+        const lines = (text || "").split(/\n/).map(function(s) { return s.trim() }).filter(function(s) { return s.length > 0 })
+        const chapters = []
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i]
+            const numMatch = line.match(/^第\s*(\d+)\s*章[\s、．。.]+(.*)$/)
+            if (numMatch) {
+                chapters.push({ index: parseInt(numMatch[1]), title: numMatch[2].trim() })
+            } else {
+                chapters.push({ index: chapters.length + 1, title: line })
+            }
+        }
+        return chapters
+    }
+    function serializeOutlineChapters(chapters) {
+        let lines = []
+        for (let i = 0; i < chapters.length; i++) {
+            const ch = chapters[i]
+            const idx = ch.index && ch.index > 0 ? ch.index : (i + 1)
+            lines.push("第" + idx + "章 " + ch.title)
+        }
+        return lines.join("\n")
+    }
+    function rebuildChaptersFromOutline() {
+        sheet.outlineChapters = parseOutlineChapters(sheet.outlineText)
+    }
+    function moveChapter(fromIdx, toIdx) {
+        if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return
+        const arr = sheet.outlineChapters.slice()
+        const [item] = arr.splice(fromIdx, 1)
+        arr.splice(toIdx, 0, item)
+        sheet.outlineChapters = arr
+        sheet.outlineText = serializeOutlineChapters(arr)
+    }
+    function updateChapterTitle(idx, title) {
+        const arr = sheet.outlineChapters.slice()
+        if (idx >= 0 && idx < arr.length) {
+            arr[idx].title = title
+            sheet.outlineChapters = arr
+            sheet.outlineText = serializeOutlineChapters(arr)
+        }
     }
     function generateOutline() {
         if (!sheet.selectedGenre) { toast.show("请先在访谈里选好题材"); return }
@@ -504,8 +554,14 @@ Popup {
                     RowLayout { spacing: Theme.sp2
                         Icon { name: "sparkles"; color: Theme.primaryHi; size: 15 }
                         RippleButton {
-                            text: sheet.generating && sheet.genTarget === "world" ? "生成中…" : "AI 据访谈起草核心设定"
+                            text: sheet.generating && sheet.genTarget === "world" ? "生成中…" : (sheet.worldView || sheet.characters || sheet.timeline ? "重新生成核心设定" : "AI 据访谈起草核心设定")
                             accent: Theme.primaryHi; enabled: !sheet.generating
+                            onClicked: generateWorld()
+                        }
+                        RippleButton {
+                            text: "重新生成"
+                            ghost: true
+                            enabled: !sheet.generating && (sheet.worldView || sheet.characters || sheet.timeline)
                             onClicked: generateWorld()
                         }
                     }
@@ -530,7 +586,7 @@ Popup {
                             spacing: Theme.sp2
                             Icon { name: "layers"; color: Theme.primaryHi; size: 16 }
                             Label {
-                                text: "大纲由 AI 据你的方向/题材/钩子起草。请通读并按需修改——大纲定稿后进入创作台，可逐章展开、按需写正文，而不是一上来就生成第一章。"
+                                text: "大纲由 AI 据你的方向/题材/钩子起草。拖拽章节可调整顺序，点击标题可编辑——大纲定稿后进入创作台。"
                                 color: Theme.body; font.family: Theme.fontFamily; font.pixelSize: Theme.tSm
                                 wrapMode: Text.Wrap; Layout.fillWidth: true
                             }
@@ -539,22 +595,112 @@ Popup {
                     Card {
                         Layout.fillWidth: true
                         implicitHeight: 360
-                        ScrollView {
-                            anchors.fill: parent; anchors.margins: Theme.sp4; clip: true
-                            TextArea {
-                                text: sheet.outlineText
-                                onTextChanged: sheet.outlineText = text
-                                color: Theme.ink; font.family: Theme.fontFamily; font.pixelSize: Theme.tBase; wrapMode: Text.Wrap
-                                background: Rectangle { color: "transparent" }
-                                selectByMouse: true
+                        ListView {
+                            id: chapterList
+                            anchors.fill: parent
+                            anchors.margins: Theme.sp3
+                            clip: true
+                            model: sheet.outlineChapters
+                            spacing: Theme.sp2
+                            interactive: true
+                            delegate: Rectangle {
+                                id: chapterItem
+                                width: chapterList.width
+                                height: chRow.height + Theme.sp3
+                                radius: Theme.radiusSm
+                                color: dragHandler.active ? Theme.primaryA : (dropArea.containsDrag ? Theme.surfaceHover : Theme.surface2)
+                                border.color: dropArea.containsDrag ? Theme.primary : Theme.line
+                                border.width: 1
+                                opacity: dragHandler.active ? 0.6 : 1.0
+                                Behavior on color { ColorAnimation { duration: Theme.durFast } }
+
+                                property int idx: index
+
+                                RowLayout {
+                                    id: chRow
+                                    anchors.fill: parent
+                                    anchors.leftMargin: Theme.sp3
+                                    anchors.rightMargin: Theme.sp3
+                                    spacing: Theme.sp2
+
+                                    Rectangle {
+                                        width: 24; height: 24
+                                        radius: Theme.radiusSm
+                                        color: Theme.primary
+                                        Label {
+                                            anchors.centerIn: parent
+                                            text: (index + 1)
+                                            color: Theme.bg
+                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.tXs
+                                            font.bold: true
+                                        }
+                                    }
+                                    TextField {
+                                        Layout.fillWidth: true
+                                        text: model.title
+                                        onTextChanged: updateChapterTitle(index, text)
+                                        color: Theme.ink
+                                        font.family: Theme.fontFamily
+                                        font.pixelSize: Theme.tSm
+                                        background: Rectangle {
+                                            radius: Theme.radiusSm
+                                            color: "transparent"
+                                            border.color: parent.activeFocus ? Theme.primary : "transparent"
+                                            border.width: 1
+                                        }
+                                        padding: 4
+                                        leftPadding: Theme.sp2
+                                        rightPadding: Theme.sp2
+                                    }
+                                    Icon {
+                                        name: "grip-vertical"
+                                        color: Theme.sub
+                                        size: 16
+                                    }
+                                }
+
+                                DragHandler {
+                                    id: dragHandler
+                                    target: null
+                                    onActiveChanged: if (active) sheet.dragIndex = index
+                                }
+                                DropArea {
+                                    id: dropArea
+                                    anchors.fill: parent
+                                    onEntered: {
+                                        if (sheet.dragIndex >= 0 && sheet.dragIndex !== index) {
+                                            moveChapter(sheet.dragIndex, index)
+                                            sheet.dragIndex = index
+                                        }
+                                    }
+                                    onDropped: { sheet.dragIndex = -1 }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    drag.target: dragItem
+                                    drag.axis: Drag.YAxis
+                                    onPressed: sheet.dragIndex = index
+                                    onReleased: sheet.dragIndex = -1
+                                    onPressAndHold: { }
+                                }
+                            }
+                            ScrollBar.vertical: ScrollBar {
+                                policy: ScrollBar.AlwaysOn
                             }
                         }
                     }
                     RowLayout { spacing: Theme.sp2
                         Icon { name: "sparkles"; color: Theme.primaryHi; size: 15 }
                         RippleButton {
-                            text: sheet.generating && sheet.genTarget === "outline" ? "生成中…" : "AI 起草大纲（据访谈答案）"
+                            text: sheet.generating && sheet.genTarget === "outline" ? "生成中…" : (sheet.outlineChapters.length > 0 ? "重新生成大纲" : "AI 起草大纲（据访谈答案）")
                             accent: Theme.primaryHi; enabled: !sheet.generating
+                            onClicked: generateOutline()
+                        }
+                        RippleButton {
+                            text: "重新生成"
+                            ghost: true
+                            enabled: !sheet.generating && sheet.outlineChapters.length > 0
                             onClicked: generateOutline()
                         }
                     }
@@ -585,7 +731,49 @@ Popup {
                     ConfirmRow { k: "时间线"; v: sheet.timeline || "未生成" }
                     ConfirmRow { k: "大纲"; v: sheet.outlineText ? (sheet.outlineText.split("\n").filter(function(s){return s.trim()}).length + " 章") : "未生成" }
                     Rectangle { Layout.fillWidth: true; height: 1; color: Theme.lineSoft }
-                    Label { text: "进入后将先看到定稿大纲，可逐章展开；写第一章是顶部「生成本章」的显式动作。"; color: Theme.sub; font.family: Theme.fontFamily; font.pixelSize: Theme.tXs; wrapMode: Text.Wrap }
+                    Label { text: "进入后将先看到定稿大纲，可逐章展开写正文。"; color: Theme.sub; font.family: Theme.fontFamily; font.pixelSize: Theme.tXs; wrapMode: Text.Wrap }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        radius: Theme.radiusSm
+                        color: Theme.surface2
+                        border.color: Theme.line
+                        border.width: 1
+                        implicitHeight: 44
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: Theme.sp3
+                            anchors.rightMargin: Theme.sp3
+                            spacing: Theme.sp2
+                            CheckBox {
+                                id: firstChk
+                                checked: sheet.writeFirstChapter
+                                onToggled: sheet.writeFirstChapter = checked
+                                contentItem: Label {
+                                    text: "进入创作台后立即写第 1 章"
+                                    color: Theme.ink
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.tSm
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                                indicator: Rectangle {
+                                    width: 18; height: 18
+                                    radius: 4
+                                    color: firstChk.checked ? Theme.primary : "transparent"
+                                    border.color: firstChk.checked ? Theme.primary : Theme.line
+                                    border.width: 1
+                                    Label {
+                                        anchors.centerIn: parent
+                                        text: "✓"
+                                        color: Theme.bg
+                                        font.pixelSize: 12
+                                        font.bold: true
+                                        visible: firstChk.checked
+                                    }
+                                }
+                            }
+                            Item { Layout.fillWidth: true }
+                        }
+                    }
                 }
             }
         }
@@ -627,7 +815,8 @@ Popup {
                             worldView: sheet.worldView,
                             characters: sheet.characters,
                             timeline: sheet.timeline,
-                            outlineText: sheet.outlineText
+                            outlineText: sheet.outlineText,
+                            writeFirstChapter: sheet.writeFirstChapter
                         })
                         sheet.close()
                     }
